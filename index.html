@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shift Schedule Management System</title>
+  <link rel="stylesheet" href="css/style.css">
+  
+  <!-- PDF 생성 라이브러리 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  
+  <!-- Excel 생성 라이브러리 -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <!-- Font Awesome 아이콘 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <!-- Login/Register Modal -->
+  <div id="authModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="authTitle">Login</h2>
+      </div>
+      <div class="modal-body">
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form">
+          <div class="form-group">
+            <label for="loginEmail"><i class="fas fa-envelope"></i> Email</label>
+            <input type="email" id="loginEmail" required placeholder="example@email.com">
+          </div>
+          <div class="form-group">
+            <label for="loginPassword"><i class="fas fa-lock"></i> Password</label>
+            <input type="password" id="loginPassword" required placeholder="Enter your password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">
+            <i class="fas fa-sign-in-alt"></i> Login
+          </button>
+          
+          <div class="divider">
+            <span>OR</span>
+          </div>
+          
+          <button type="button" id="googleLoginBtn" class="btn btn-google btn-block">
+            <i class="fab fa-google"></i> Continue with Google
+          </button>
+          
+          <p class="auth-switch">
+            Don't have an account? <a href="#" id="showRegister">Sign up</a>
+          </p>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" class="auth-form" style="display: none;">
+          <div class="form-group">
+            <label for="registerName"><i class="fas fa-user"></i> Name</label>
+            <input type="text" id="registerName" required placeholder="Enter your name">
+          </div>
+          <div class="form-group">
+            <label for="registerEmail"><i class="fas fa-envelope"></i> Email</label>
+            <input type="email" id="registerEmail" required placeholder="example@email.com">
+          </div>
+          <div class="form-group">
+            <label for="registerPassword"><i class="fas fa-lock"></i> Password</label>
+            <input type="password" id="registerPassword" required placeholder="Password (min. 6 characters)">
+          </div>
+          <div class="form-group">
+            <label for="registerPasswordConfirm"><i class="fas fa-lock"></i> Confirm Password</label>
+            <input type="password" id="registerPasswordConfirm" required placeholder="Re-enter your password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">
+            <i class="fas fa-user-plus"></i> Sign Up
+          </button>
+          
+          <div class="divider">
+            <span>OR</span>
+          </div>
+          
+          <button type="button" id="googleSignupBtn" class="btn btn-google btn-block">
+            <i class="fab fa-google"></i> Sign up with Google
+          </button>
+          
+          <p class="auth-switch">
+            Already have an account? <a href="#" id="showLogin">Login</a>
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App Container -->
+  <div id="app" style="display: none;">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="container">
+        <div class="header-content">
+          <h1><i class="fas fa-calendar-check"></i> Shift Schedule Manager</h1>
+          <div class="user-info">
+            <span id="currentUserName">User</span>
+            <button id="logoutBtn" class="btn btn-secondary">
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-navigation">
+      <div class="container">
+        <button class="tab-btn active" data-tab="shift-input">
+          <i class="fas fa-edit"></i> My Shifts
+        </button>
+        <button class="tab-btn" data-tab="my-archive">
+          <i class="fas fa-archive"></i> Archive
+        </button>
+        <button class="tab-btn" data-tab="all-shifts">
+          <i class="fas fa-users"></i> All Staff
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container main-content">
+      <!-- Tab 1: My Shifts -->
+      <div id="shift-input" class="tab-content active">
+        <div class="section card">
+          <h2><i class="fas fa-calendar-week"></i> This Week's Schedule</h2>
+          
+          <div class="form-group">
+            <label for="weekStart">Week Start Date (Monday):</label>
+            <input type="date" id="weekStart" class="form-control">
+          </div>
+          <p class="help-text">
+            Select the week start date to generate the weekly schedule automatically.
+          </p>
+
+          <div id="weekHeaderLabel" class="week-label"></div>
+
+          <div class="table-responsive">
+            <table id="weekTable" class="shift-table">
+              <thead>
+                <tr id="weekHeaderRow">
+                  <th></th>
+                  <!-- JS에서 동적 생성 -->
+                </tr>
+              </thead>
+              <tbody>
+                <tr data-row="ln">
+                  <td class="row-label"><strong>LN</strong></td>
+                </tr>
+                <tr data-row="dn">
+                  <td class="row-label"><strong>DN</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="totals-box">
+            <h3><i class="fas fa-calculator"></i> Weekly Total</h3>
+            <div id="weekTotals" class="totals-content">
+              Weekday: 0h | Saturday: 0h | Sunday: 0h | Total: 0h
+            </div>
+          </div>
+
+          <div class="button-group">
+            <button id="saveWeekBtn" class="btn btn-success">
+              <i class="fas fa-save"></i> Save to Archive
+            </button>
+            <button id="downloadExcelBtn" class="btn btn-primary">
+              <i class="fas fa-file-excel"></i> Download Excel
+            </button>
+            <button id="downloadPdfBtn" class="btn btn-danger">
+              <i class="fas fa-file-pdf"></i> Download PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Daily Input Form -->
+        <div class="section card">
+          <h2><i class="fas fa-calendar-day"></i> Daily Input</h2>
+          <p class="help-text">
+            Working hours are automatically rounded to <strong>15-minute (0.25 hour) intervals</strong>.
+          </p>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="dayDate">Date:</label>
+              <input type="date" id="dayDate" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label for="dayOfWeek">Day:</label>
+              <select id="dayOfWeek" class="form-control">
+                <option value="mon">Monday</option>
+                <option value="tue">Tuesday</option>
+                <option value="wed">Wednesday</option>
+                <option value="thu">Thursday</option>
+                <option value="fri">Friday</option>
+                <option value="sat">Saturday</option>
+                <option value="sun">Sunday</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="shift-time-inputs">
+            <div class="shift-time-group">
+              <h3><i class="fas fa-sun"></i> Lunch (LN)</h3>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Start</label>
+                  <input type="time" id="lnStart" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>End</label>
+                  <input type="time" id="lnEnd" class="form-control">
+                </div>
+              </div>
+            </div>
+
+            <div class="shift-time-group">
+              <h3><i class="fas fa-moon"></i> Dinner (DN)</h3>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Start</label>
+                  <input type="time" id="dnStart" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>End</label>
+                  <input type="time" id="dnEnd" class="form-control">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="button-group">
+            <button id="applyDayBtn" class="btn btn-primary">
+              <i class="fas fa-check"></i> Apply to Schedule
+            </button>
+            <button id="clearDayInputsBtn" class="btn btn-secondary">
+              <i class="fas fa-eraser"></i> Clear Input
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: My Archive -->
+      <div id="my-archive" class="tab-content">
+        <div class="section card">
+          <h2><i class="fas fa-archive"></i> Saved Schedules</h2>
+          <p class="help-text">
+            View and download your previously saved schedules.
+          </p>
+
+          <div id="archiveList" class="archive-list">
+            <div class="empty-state">
+              <i class="fas fa-inbox"></i>
+              <p>No saved schedules yet.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: All Staff -->
+      <div id="all-shifts" class="tab-content">
+        <div class="section card">
+          <h2><i class="fas fa-users"></i> All Staff Schedules</h2>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="allShiftsWeekStart">Week Start Date:</label>
+              <input type="date" id="allShiftsWeekStart" class="form-control">
+            </div>
+            <div class="form-group">
+              <button id="loadAllShiftsBtn" class="btn btn-primary">
+                <i class="fas fa-search"></i> Load
+              </button>
+            </div>
+          </div>
+
+          <div id="allShiftsContainer" class="all-shifts-container">
+            <div class="empty-state">
+              <i class="fas fa-calendar-times"></i>
+              <p>Select a week start date and click Load.</p>
+            </div>
+          </div>
+
+          <div class="button-group" id="allShiftsActions" style="display: none;">
+            <button id="downloadAllExcelBtn" class="btn btn-primary">
+              <i class="fas fa-file-excel"></i> Download All (Excel)
+            </button>
+            <button id="downloadAllPdfBtn" class="btn btn-danger">
+              <i class="fas fa-file-pdf"></i> Download All (PDF)
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="container">
+        <p>&copy; 2025 Shift Schedule Management System v2.1</p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- JavaScript -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/database.js"></script>
+  <script src="js/shift-manager.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
