@@ -65,8 +65,22 @@ const Auth = {
 
     // Firebase Auth State 변경 감지
     if (auth) {
+      // 리다이렉트 결과 확인
+      auth.getRedirectResult()
+        .then((result) => {
+          if (result && result.user) {
+            this.handleFirebaseUser(result.user);
+          }
+        })
+        .catch((error) => {
+          if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/popup-blocked') {
+            console.error('Redirect result error:', error);
+          }
+        });
+
+      // 인증 상태 변경 감지
       auth.onAuthStateChanged((user) => {
-        if (user) {
+        if (user && !this.currentUser) {
           this.handleFirebaseUser(user);
         }
       });
@@ -205,17 +219,15 @@ const Auth = {
     }
 
     try {
-      const result = await auth.signInWithPopup(googleProvider);
-      const user = result.user;
-      
-      // Firebase 사용자 정보로 앱 사용자 생성
-      await this.handleFirebaseUser(user);
+      // 모바일 호환성을 위해 리다이렉트 방식 사용
+      await auth.signInWithRedirect(googleProvider);
+      // 리다이렉트 후 돌아오면 onAuthStateChanged에서 처리됨
       
     } catch (error) {
       console.error('Google login error:', error);
       
-      if (error.code === 'auth/popup-closed-by-user') {
-        // 사용자가 팝업을 닫음 - 에러 표시 안 함
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/popup-blocked') {
+        // 사용자가 팝업을 닫거나 차단됨 - 에러 표시 안 함
         return;
       }
       
