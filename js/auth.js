@@ -97,35 +97,42 @@ const Auth = {
       return;
     }
 
+    if (!db) {
+      alert('Firebase Firestore가 초기화되지 않았습니다.');
+      return;
+    }
+
     try {
-      // localStorage에서 사용자 목록 가져오기
-      const usersJson = localStorage.getItem('registeredUsers');
-      const users = usersJson ? JSON.parse(usersJson) : [];
+      // Firestore에서 사용자 검색
+      const usersRef = db.collection('users');
+      const snapshot = await usersRef.where('email', '==', email).get();
       
-      const user = users.find(u => u.email === email);
-      
-      if (user) {
-        // 비밀번호 확인
-        const hashedPassword = this.hashPassword(password);
-        
-        if (user.password === hashedPassword) {
-          // 로그인 성공
-          this.currentUser = {
-            id: user.id,
-            username: user.username,
-            email: user.email
-          };
-          localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-          this.showApp();
-        } else {
-          alert('비밀번호가 일치하지 않습니다.');
-        }
-      } else {
+      if (snapshot.empty) {
         alert('등록되지 않은 이메일입니다.');
+        return;
+      }
+
+      const userDoc = snapshot.docs[0];
+      const user = userDoc.data();
+      
+      // 비밀번호 확인
+      const hashedPassword = this.hashPassword(password);
+      
+      if (user.password === hashedPassword) {
+        // 로그인 성공
+        this.currentUser = {
+          id: userDoc.id,
+          username: user.username,
+          email: user.email
+        };
+        localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+        this.showApp();
+      } else {
+        alert('비밀번호가 일치하지 않습니다.');
       }
     } catch (error) {
       console.error('로그인 에러:', error);
-      alert('로그인 중 오류가 발생했습니다.');
+      alert('로그인 중 오류가 발생했습니다: ' + error.message);
     }
   },
 
@@ -152,13 +159,17 @@ const Auth = {
       return;
     }
 
+    if (!db) {
+      alert('Firebase Firestore가 초기화되지 않았습니다.');
+      return;
+    }
+
     try {
-      // localStorage에서 사용자 목록 가져오기
-      const usersJson = localStorage.getItem('registeredUsers');
-      const users = usersJson ? JSON.parse(usersJson) : [];
+      // Firestore에서 이메일 중복 확인
+      const usersRef = db.collection('users');
+      const snapshot = await usersRef.where('email', '==', email).get();
       
-      // 이메일 중복 확인
-      if (users.some(u => u.email === email)) {
+      if (!snapshot.empty) {
         alert('이미 등록된 이메일입니다.');
         return;
       }
@@ -166,16 +177,14 @@ const Auth = {
       // 사용자 생성
       const hashedPassword = this.hashPassword(password);
       const newUser = {
-        id: 'user_' + Date.now(),
         username: name,
         email: email,
         password: hashedPassword,
-        created_at: new Date().toISOString()
+        created_at: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-      // localStorage에 저장
-      users.push(newUser);
-      localStorage.setItem('registeredUsers', JSON.stringify(users));
+      // Firestore에 저장
+      await usersRef.add(newUser);
       
       alert('회원가입이 완료되었습니다! 로그인해주세요.');
       this.showLoginForm();
@@ -184,7 +193,7 @@ const Auth = {
       document.getElementById('registerForm').reset();
     } catch (error) {
       console.error('회원가입 에러:', error);
-      alert('회원가입 중 오류가 발생했습니다.');
+      alert('회원가입 중 오류가 발생했습니다: ' + error.message);
     }
   },
 

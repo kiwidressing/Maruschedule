@@ -15,11 +15,14 @@ const firebaseConfig = {
 // Initialize Firebase
 let firebaseApp = null;
 let auth = null;
+let db = null;
 
 try {
   firebaseApp = firebase.initializeApp(firebaseConfig);
   auth = firebase.auth();
+  db = firebase.firestore();
   console.log('✅ Firebase initialized successfully');
+  console.log('✅ Firestore initialized successfully');
 } catch (error) {
   console.error('❌ Firebase initialization error:', error);
 }
