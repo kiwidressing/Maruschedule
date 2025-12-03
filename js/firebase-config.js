@@ -8,8 +8,8 @@ const firebaseConfig = {
   projectId: "maruschedule-ccf5a",
   storageBucket: "maruschedule-ccf5a.firebasestorage.app",
   messagingSenderId: "539907734866",
-  appId: "1:539907734866:web:79d6a33cba8ff6dc584e8b",
-  measurementId: "G-94LBR71R2E"
+  appId: "1:539907734866:web:9ea9c96a6bfd92a7584e8b",
+  measurementId: "G-G5QDPC1S5E"
 };
 
 // Initialize Firebase
