@@ -98,31 +98,27 @@ const Auth = {
     }
 
     try {
-      // API에서 사용자 검색
-      const response = await fetch(`tables/users?search=${encodeURIComponent(email)}`);
-      const result = await response.json();
-
-      if (result.data && result.data.length > 0) {
-        const user = result.data.find(u => u.email === email);
+      // localStorage에서 사용자 목록 가져오기
+      const usersJson = localStorage.getItem('registeredUsers');
+      const users = usersJson ? JSON.parse(usersJson) : [];
+      
+      const user = users.find(u => u.email === email);
+      
+      if (user) {
+        // 비밀번호 확인
+        const hashedPassword = this.hashPassword(password);
         
-        if (user) {
-          // 비밀번호 확인 (실제로는 해시된 비밀번호를 비교해야 함)
-          const hashedPassword = this.hashPassword(password);
-          
-          if (user.password === hashedPassword) {
-            // 로그인 성공
-            this.currentUser = {
-              id: user.id,
-              username: user.username,
-              email: user.email
-            };
-            localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-            this.showApp();
-          } else {
-            alert('비밀번호가 일치하지 않습니다.');
-          }
+        if (user.password === hashedPassword) {
+          // 로그인 성공
+          this.currentUser = {
+            id: user.id,
+            username: user.username,
+            email: user.email
+          };
+          localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+          this.showApp();
         } else {
-          alert('등록되지 않은 이메일입니다.');
+          alert('비밀번호가 일치하지 않습니다.');
         }
       } else {
         alert('등록되지 않은 이메일입니다.');
@@ -156,12 +152,13 @@ const Auth = {
       return;
     }
 
-    // 이메일 중복 확인
     try {
-      const response = await fetch(`tables/users?search=${encodeURIComponent(email)}`);
-      const result = await response.json();
-
-      if (result.data && result.data.some(u => u.email === email)) {
+      // localStorage에서 사용자 목록 가져오기
+      const usersJson = localStorage.getItem('registeredUsers');
+      const users = usersJson ? JSON.parse(usersJson) : [];
+      
+      // 이메일 중복 확인
+      if (users.some(u => u.email === email)) {
         alert('이미 등록된 이메일입니다.');
         return;
       }
@@ -169,28 +166,22 @@ const Auth = {
       // 사용자 생성
       const hashedPassword = this.hashPassword(password);
       const newUser = {
+        id: 'user_' + Date.now(),
         username: name,
         email: email,
         password: hashedPassword,
         created_at: new Date().toISOString()
       };
 
-      const createResponse = await fetch('tables/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser)
-      });
-
-      if (createResponse.ok) {
-        const createdUser = await createResponse.json();
-        alert('회원가입이 완료되었습니다! 로그인해주세요.');
-        this.showLoginForm();
-        
-        // 폼 초기화
-        document.getElementById('registerForm').reset();
-      } else {
-        alert('회원가입 중 오류가 발생했습니다.');
-      }
+      // localStorage에 저장
+      users.push(newUser);
+      localStorage.setItem('registeredUsers', JSON.stringify(users));
+      
+      alert('회원가입이 완료되었습니다! 로그인해주세요.');
+      this.showLoginForm();
+      
+      // 폼 초기화
+      document.getElementById('registerForm').reset();
     } catch (error) {
       console.error('회원가입 에러:', error);
       alert('회원가입 중 오류가 발생했습니다.');
