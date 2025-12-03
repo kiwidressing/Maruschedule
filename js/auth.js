@@ -218,20 +218,41 @@ const Auth = {
       return;
     }
 
+    // Firebase 초기화 확인
+    if (typeof firebase === 'undefined') {
+      alert('Firebase SDK not loaded. Please refresh the page.');
+      return;
+    }
+
+    console.log('🔑 Firebase Config Check:', {
+      apiKey: firebaseConfig.apiKey ? '✅ Set' : '❌ Missing',
+      authDomain: firebaseConfig.authDomain,
+      projectId: firebaseConfig.projectId
+    });
+
     try {
+      console.log('🚀 Starting Google Sign-in with Redirect...');
+      
       // 모바일 호환성을 위해 리다이렉트 방식 사용
       await auth.signInWithRedirect(googleProvider);
       // 리다이렉트 후 돌아오면 onAuthStateChanged에서 처리됨
       
     } catch (error) {
-      console.error('Google login error:', error);
+      console.error('❌ Google login error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/popup-blocked') {
         // 사용자가 팝업을 닫거나 차단됨 - 에러 표시 안 함
         return;
       }
       
-      alert('Google login failed: ' + error.message);
+      // API Key 관련 에러 상세 정보
+      if (error.code && error.code.includes('api-key')) {
+        alert('Firebase API Key Error. This may be due to:\n\n1. API Key restrictions in Google Cloud Console\n2. Identity Platform API not enabled\n3. Firebase configuration issue\n\nPlease check Firebase Console settings.');
+      } else {
+        alert('Google login failed: ' + error.message);
+      }
     }
   },
 
