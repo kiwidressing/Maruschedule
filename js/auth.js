@@ -138,6 +138,14 @@ const Auth = {
       auth.getRedirectResult()
         .then((result) => {
           this.showDebugLog('🔄 getRedirectResult 호출됨', 'info');
+          if (result) {
+            this.showDebugLog(`📦 결과 객체: ${JSON.stringify({
+              hasUser: !!result.user,
+              operationType: result.operationType || null,
+              isNewUser: result.additionalUserInfo ? result.additionalUserInfo.isNewUser : null,
+              providerId: result.credential ? result.credential.providerId : null,
+            })}`, 'info');
+          }
           if (result && result.user) {
             this.showDebugLog(`✅ 리다이렉트 결과: ${result.user.email}`, 'success');
             this.showDebugLog(`📧 이메일: ${result.user.email}`, 'info');
@@ -150,7 +158,7 @@ const Auth = {
               this.showAuthModal();
             });
           } else {
-            this.showDebugLog('ℹ️ 리다이렉트 결과 없음 (정상)', 'info');
+            this.showDebugLog('ℹ️ 리다이렉트 결과 없음 (정상)', 'warning');
           }
         })
         .catch((error) => {
@@ -163,25 +171,29 @@ const Auth = {
       // 인증 상태 변경 감지 (리디렉트 후 한 번만 실행되도록)
       let authStateProcessed = false;
       auth.onAuthStateChanged((user) => {
+        this.showDebugLog(`👤 authStateChanged 발생 (user ${user ? '존재' : '없음'})`, user ? 'info' : 'warning');
         if (user) {
-          console.log('👤 Firebase auth state changed:', user.email);
-          console.log('🔍 currentUser exists?', !!this.currentUser);
-          console.log('🔍 authStateProcessed?', authStateProcessed);
+          this.showDebugLog(`   • email: ${user.email}`, 'info');
+          this.showDebugLog(`   • uid: ${user.uid}`, 'info');
         }
+        this.showDebugLog(`   • currentUser 캐시 있음? ${!!this.currentUser}`, 'info');
+        this.showDebugLog(`   • authStateProcessed? ${authStateProcessed}`, 'info');
         
         // 이미 처리했거나 currentUser가 있으면 무시
         if (authStateProcessed || this.currentUser) {
-          console.log('⏭️ Skipping auth state change (already processed)');
+          this.showDebugLog('⏭️ authStateChanged 처리 생략 (이미 처리됨)', 'warning');
           return;
         }
         
         if (user) {
           authStateProcessed = true;
-          console.log('🔄 Processing auth state change for:', user.email);
+          this.showDebugLog(`🔄 authStateChanged 사용자 처리 시작: ${user.email}`, 'info');
           this.handleFirebaseUser(user).catch((err) => {
-            console.error('❌ Error in auth state handler:', err);
+            this.showDebugLog(`❌ authState handler 오류: ${err.message}`, 'error');
             authStateProcessed = false; // 실패 시 다시 시도 가능하도록
           });
+        } else {
+          this.showDebugLog('ℹ️ authStateChanged: user 없음', 'warning');
         }
       });
     }
