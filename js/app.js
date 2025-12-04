@@ -44,6 +44,19 @@ const App = {
         companyLabel.textContent = user.companyName;
       }
     }
+
+    // 개인 사용자는 All Staff 탭 숨기기
+    if (user && user.role === 'personal') {
+      const allShiftsTab = document.querySelector('[data-tab="all-shifts"]');
+      if (allShiftsTab) {
+        allShiftsTab.style.display = 'none';
+      }
+      // 회사명 표시 숨기기
+      const companyLabel = document.getElementById('currentCompanyName');
+      if (companyLabel) {
+        companyLabel.textContent = '개인 계정';
+      }
+    }
   },
 
   // 탭 네비게이션 설정

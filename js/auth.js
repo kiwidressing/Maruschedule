@@ -47,12 +47,31 @@ const Auth = {
     // 폼 전환
     document.getElementById('showRegister').addEventListener('click', (e) => {
       e.preventDefault();
+      this.showAccountTypeSelection();
+    });
+
+    // Account type selection
+    document.getElementById('selectBusinessAccount').addEventListener('click', () => {
       this.showRegisterForm();
     });
 
-    document.getElementById('showLogin').addEventListener('click', (e) => {
+    document.getElementById('selectPersonalAccount').addEventListener('click', () => {
+      this.showPersonalRegisterForm();
+    });
+
+    document.getElementById('backToLoginFromSelection').addEventListener('click', (e) => {
       e.preventDefault();
       this.showLoginForm();
+    });
+
+    document.getElementById('backToSelectionFromBusiness').addEventListener('click', (e) => {
+      e.preventDefault();
+      this.showAccountTypeSelection();
+    });
+
+    document.getElementById('backToSelectionFromPersonal').addEventListener('click', (e) => {
+      e.preventDefault();
+      this.showAccountTypeSelection();
     });
 
     // 로그아웃
@@ -60,13 +79,15 @@ const Auth = {
       this.handleLogout();
     });
 
-    // Google 로그인 버튼 (임시 안내)
+    // Google 로그인 버튼
     document.getElementById('googleLoginBtn').addEventListener('click', () => {
       this.handleGoogleLogin();
     });
 
-    document.getElementById('googleSignupBtn').addEventListener('click', () => {
-      alert('Google 연동 회원가입은 준비 중입니다. 이메일 회원가입을 이용해주세요.');
+    // Personal register form
+    document.getElementById('personalRegisterForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.handlePersonalRegister();
     });
 
     // 간편 로그인 폼
@@ -272,7 +293,82 @@ const Auth = {
     }
   },
 
-  // 회원가입 처리
+  // 개인 계정 가입 처리
+  async handlePersonalRegister() {
+    const name = document.getElementById('personalName').value.trim();
+    const email = document.getElementById('personalEmail').value.trim().toLowerCase();
+    const password = document.getElementById('personalPassword').value;
+    const passwordConfirm = document.getElementById('personalPasswordConfirm').value;
+
+    // 유효성 검사
+    if (!name || !email || !password) {
+      alert('모든 필드를 입력해주세요.');
+      return;
+    }
+
+    if (password.length < 6) {
+      alert('비밀번호는 최소 6자 이상이어야 합니다.');
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      alert('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    if (!db) {
+      alert('Firebase Firestore가 초기화되지 않았습니다.');
+      return;
+    }
+
+    try {
+      // 이메일 중복 체크
+      const existingUser = await db.collection('users').where('email', '==', email).get();
+      if (!existingUser.empty) {
+        alert('이미 등록된 이메일입니다.');
+        return;
+      }
+
+      // 비밀번호 해싱
+      const hashedPassword = this.hashPassword(password);
+
+      // 개인 사용자 생성 (company_id 없음, role = 'personal')
+      const newUser = {
+        username: name,
+        email: email,
+        password: hashedPassword,
+        role: 'personal',
+        account_type: 'email',
+        auth_provider: 'local',
+        status: 'active',
+        created_at: new Date().toISOString()
+      };
+
+      const userRef = await db.collection('users').add(newUser);
+
+      alert(`✅ 개인 계정 가입 완료!\n\n이메일: ${email}\n\n로그인 후 스케줄 관리를 시작하세요.`);
+      
+      // 자동 로그인
+      this.currentUser = {
+        id: userRef.id,
+        uid: userRef.id,
+        name: name,
+        email: email,
+        role: 'personal',
+        companyId: null,
+        companyName: null,
+        status: 'active',
+        accountType: 'personal'
+      };
+      localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+      this.showApp();
+    } catch (error) {
+      console.error('개인 계정 가입 에러:', error);
+      alert('가입 중 오류가 발생했습니다: ' + error.message);
+    }
+  },
+
+  // 기업 계정 가입 처리
   async handleRegister() {
     const name = document.getElementById('registerName').value.trim();
     const email = document.getElementById('registerEmail').value.trim().toLowerCase();
@@ -604,13 +700,35 @@ const Auth = {
     document.getElementById('loginForm').style.display = 'flex';
     document.getElementById('registerForm').style.display = 'none';
     document.getElementById('simpleLoginForm').style.display = 'none';
+    document.getElementById('accountTypeSelection').style.display = 'none';
+    document.getElementById('personalRegisterForm').style.display = 'none';
     document.getElementById('authTitle').textContent = 'Login';
+  },
+
+  showAccountTypeSelection() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('simpleLoginForm').style.display = 'none';
+    document.getElementById('accountTypeSelection').style.display = 'flex';
+    document.getElementById('personalRegisterForm').style.display = 'none';
+    document.getElementById('authTitle').textContent = 'Sign Up';
   },
 
   showRegisterForm() {
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('registerForm').style.display = 'flex';
     document.getElementById('simpleLoginForm').style.display = 'none';
+    document.getElementById('accountTypeSelection').style.display = 'none';
+    document.getElementById('personalRegisterForm').style.display = 'none';
+    document.getElementById('authTitle').textContent = 'Sign Up';
+  },
+
+  showPersonalRegisterForm() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('simpleLoginForm').style.display = 'none';
+    document.getElementById('accountTypeSelection').style.display = 'none';
+    document.getElementById('personalRegisterForm').style.display = 'flex';
     document.getElementById('authTitle').textContent = 'Sign Up';
   },
 
@@ -618,6 +736,8 @@ const Auth = {
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('registerForm').style.display = 'none';
     document.getElementById('simpleLoginForm').style.display = 'flex';
+    document.getElementById('accountTypeSelection').style.display = 'none';
+    document.getElementById('personalRegisterForm').style.display = 'none';
     document.getElementById('authTitle').textContent = '간편 로그인';
   },
 
@@ -642,19 +762,14 @@ const Auth = {
       companyCodeGroup.style.display = 'none';
       document.getElementById('registerCompanyName').required = true;
       document.getElementById('registerCompanyCode').required = false;
-      registerHelpText.textContent = 'Master 계정으로 가입하면 새로운 기업을 생성하고 관리자를 임명할 수 있습니다.';
+      registerHelpText.textContent = 'Master: 기업 생성 및 관리자 권한 보유';
     } else {
-      // Admin/Employee: 기업 코드 입력 필요
+      // Employee: 기업 코드 입력 필요
       companyNameGroup.style.display = 'none';
       companyCodeGroup.style.display = 'block';
       document.getElementById('registerCompanyName').required = false;
       document.getElementById('registerCompanyCode').required = true;
-      
-      if (role === 'admin') {
-        registerHelpText.textContent = '관리자로 가입하려면 기업에서 발급한 6자리 초대 코드가 필요합니다. 승인 후 직원 관리 권한이 부여됩니다.';
-      } else {
-        registerHelpText.textContent = '직원으로 가입하려면 기업에서 발급한 6자리 초대 코드가 필요합니다.';
-      }
+      registerHelpText.textContent = 'Employee: 가입 요청 후 관리자 승인 필요';
     }
   },
 
