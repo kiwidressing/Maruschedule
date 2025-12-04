@@ -69,7 +69,10 @@ const Auth = {
       auth.getRedirectResult()
         .then((result) => {
           if (result && result.user) {
+            console.log('🔄 Redirect result user detected:', result.user.email);
             this.handleFirebaseUser(result.user);
+          } else {
+            console.log('ℹ️ No redirect result user');
           }
         })
         .catch((error) => {
@@ -80,7 +83,10 @@ const Auth = {
 
       // 인증 상태 변경 감지
       auth.onAuthStateChanged((user) => {
-        if (user && !this.currentUser) {
+        if (user) {
+          console.log('👤 Firebase auth state changed:', user.email, 'currentUser set?', !!this.currentUser);
+        }
+        if (user && (!this.currentUser || this.currentUser.email !== user.email)) {
           this.handleFirebaseUser(user);
         }
       });
@@ -232,7 +238,8 @@ const Auth = {
 
     try {
       console.log('🚀 Starting Google Sign-in with Redirect...');
-      
+
+      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
       // 모바일 호환성을 위해 리다이렉트 방식 사용
       await auth.signInWithRedirect(googleProvider);
       // 리다이렉트 후 돌아오면 onAuthStateChanged에서 처리됨
@@ -265,13 +272,15 @@ const Auth = {
     }
 
     try {
+      console.log('🔍 Handling Firebase user:', firebaseUser.email);
+
       const usersRef = db.collection('users');
       const snapshot = await usersRef.where('email', '==', firebaseUser.email).limit(1).get();
 
       let userDoc = null;
 
       if (snapshot.empty) {
-        // 새 사용자 생성
+        console.log('🆕 Creating new Firestore user for Google account');
         const newUser = {
           username: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Google User'),
           email: firebaseUser.email,
@@ -285,6 +294,7 @@ const Auth = {
         userDoc = await docRef.get();
       } else {
         userDoc = snapshot.docs[0];
+        console.log('ℹ️ Existing Firestore user found:', userDoc.id);
 
         // 프로필 정보 업데이트 (필요 시)
         const userData = userDoc.data();
@@ -310,6 +320,7 @@ const Auth = {
       };
 
       localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+      console.log('✅ Google user logged in:', this.currentUser);
       this.showApp();
 
     } catch (error) {
