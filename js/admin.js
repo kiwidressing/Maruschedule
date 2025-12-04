@@ -47,6 +47,12 @@ const AdminPanel = (function() {
             copyBtn.addEventListener('click', copyInviteCode);
         }
 
+        // Quick account creation
+        const createQuickBtn = document.getElementById('createQuickAccountBtn');
+        if (createQuickBtn) {
+            createQuickBtn.addEventListener('click', createQuickAccount);
+        }
+
         // Member filter buttons
         const filterBtns = document.querySelectorAll('.filter-btn');
         filterBtns.forEach(btn => {
@@ -342,6 +348,73 @@ const AdminPanel = (function() {
         } catch (error) {
             console.error('Error removing member:', error);
             showError('사용자 제거 중 오류가 발생했습니다: ' + error.message);
+        }
+    }
+
+    /**
+     * Create quick account (ID + name only)
+     */
+    async function createQuickAccount() {
+        const employeeId = document.getElementById('quickAccountId').value.trim();
+        const employeeName = document.getElementById('quickAccountName').value.trim();
+
+        if (!employeeId || !employeeName) {
+            alert('직원 ID와 이름을 모두 입력해주세요.');
+            return;
+        }
+
+        // Validate ID format (alphanumeric only)
+        if (!/^[A-Za-z0-9]+$/.test(employeeId)) {
+            alert('직원 ID는 영문자와 숫자만 사용할 수 있습니다.');
+            return;
+        }
+
+        if (!confirm(`다음 계정을 생성하시겠습니까?\n\nID: ${employeeId}\n이름: ${employeeName}\n\n이 계정은 즉시 활성화되며, 직원에게 ID를 배포할 수 있습니다.`)) {
+            return;
+        }
+
+        try {
+            const db = firebase.firestore();
+            
+            // Check if ID already exists
+            const existingEmail = `${employeeId}@${currentUser.companyId}.local`;
+            const existingUsers = await db.collection('users')
+                .where('email', '==', existingEmail)
+                .get();
+
+            if (!existingUsers.empty) {
+                alert('이미 존재하는 직원 ID입니다. 다른 ID를 사용해주세요.');
+                return;
+            }
+
+            // Create simple account
+            const newUserData = {
+                username: employeeName,
+                email: existingEmail,
+                password: 'simple_account', // Simple accounts don't use password
+                role: 'employee',
+                company_id: currentUser.companyId,
+                status: 'active',
+                account_type: 'simple', // Mark as simple account
+                employee_id: employeeId,
+                created_by: currentUser.id,
+                created_at: firebase.firestore.FieldValue.serverTimestamp(),
+                auth_provider: 'simple'
+            };
+
+            const userRef = await db.collection('users').add(newUserData);
+
+            showSuccess(`계정이 생성되었습니다!\n\n직원 ID: ${employeeId}\n이름: ${employeeName}\n\n이 ID를 직원에게 배포하세요.`);
+
+            // Clear form
+            document.getElementById('quickAccountId').value = '';
+            document.getElementById('quickAccountName').value = '';
+
+            // Reload members list
+            await loadCompanyMembers();
+        } catch (error) {
+            console.error('계정 생성 에러:', error);
+            showError('계정 생성 중 오류가 발생했습니다: ' + error.message);
         }
     }
 

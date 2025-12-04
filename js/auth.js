@@ -122,22 +122,44 @@ const Auth = {
     try {
       // Firestore에서 사용자 검색
       const usersRef = db.collection('users');
-      const snapshot = await usersRef.where('email', '==', email).get();
       
+      // Try email login first
+      let snapshot = await usersRef.where('email', '==', email).get();
+      
+      // If not found, try employee ID login (simple accounts)
       if (snapshot.empty) {
-        alert('등록되지 않은 이메일입니다.');
-        return;
+        // Check if it's an employee ID
+        const allUsers = await usersRef.where('account_type', '==', 'simple').get();
+        let found = false;
+        allUsers.forEach(doc => {
+          const data = doc.data();
+          if (data.employee_id === email) {
+            snapshot = { empty: false, docs: [doc] };
+            found = true;
+          }
+        });
+        
+        if (!found) {
+          alert('등록되지 않은 이메일 또는 직원 ID입니다.');
+          return;
+        }
       }
 
       const userDoc = snapshot.docs[0];
       const user = userDoc.data();
       
-      // 비밀번호 확인
-      const hashedPassword = this.hashPassword(password);
-      
-      if (user.password !== hashedPassword) {
-        alert('비밀번호가 일치하지 않습니다.');
-        return;
+      // Simple account login (no password check)
+      if (user.account_type === 'simple' && user.employee_id === email) {
+        // Simple account - just login
+        console.log('Simple account login');
+      } else {
+        // Regular account - check password
+        const hashedPassword = this.hashPassword(password);
+        
+        if (user.password !== hashedPassword) {
+          alert('비밀번호가 일치하지 않습니다.');
+          return;
+        }
       }
 
       if (user.status && user.status !== 'active') {

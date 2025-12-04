@@ -14,6 +14,11 @@ const App = {
     // 아카이브 로드
     this.loadMyArchives();
     
+    // Profile 매니저 초기화
+    if (typeof ProfileManager !== 'undefined') {
+      ProfileManager.init();
+    }
+    
     // Admin 패널 초기화
     const user = Auth.getCurrentUser();
     if (user && (user.role === 'master' || user.role === 'admin')) {

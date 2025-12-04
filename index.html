@@ -130,6 +130,48 @@
     </div>
   </div>
 
+  <!-- Profile Settings Modal -->
+  <div id="profileModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Profile Settings</h2>
+        <button class="close-modal" id="closeProfileModal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="profileName"><i class="fas fa-user"></i> Name</label>
+          <input type="text" id="profileName" class="form-control" placeholder="Your name">
+        </div>
+        
+        <div class="form-group">
+          <label><i class="fas fa-envelope"></i> Email</label>
+          <input type="text" id="profileEmail" class="form-control" readonly disabled>
+        </div>
+        
+        <div class="form-group">
+          <label><i class="fas fa-building"></i> Company</label>
+          <input type="text" id="profileCompany" class="form-control" readonly disabled>
+        </div>
+        
+        <div class="form-group">
+          <label><i class="fas fa-user-tag"></i> Role</label>
+          <input type="text" id="profileRole" class="form-control" readonly disabled>
+        </div>
+
+        <div class="button-group">
+          <button id="saveProfileBtn" class="btn btn-primary">
+            <i class="fas fa-save"></i> Save Changes
+          </button>
+          <button id="withdrawBtn" class="btn btn-danger">
+            <i class="fas fa-sign-out-alt"></i> Leave Company
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Main App Container -->
   <div id="app" style="display: none;">
     <!-- Header -->
@@ -142,6 +184,9 @@
               <span id="currentUserName">User</span>
               <small id="currentCompanyName" class="company-label"></small>
             </div>
+            <button id="profileBtn" class="btn btn-secondary">
+              <i class="fas fa-user-cog"></i> Profile
+            </button>
             <button id="logoutBtn" class="btn btn-secondary">
               <i class="fas fa-sign-out-alt"></i> Logout
             </button>
@@ -371,6 +416,27 @@
         </div>
 
         <div class="section card">
+          <h2><i class="fas fa-user-plus"></i> Quick Account Creation</h2>
+          <p class="help-text">Create a simple account (ID + name only) to distribute to employees</p>
+          
+          <div class="quick-account-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="quickAccountId"><i class="fas fa-id-card"></i> Employee ID</label>
+                <input type="text" id="quickAccountId" placeholder="e.g., EMP001" class="form-control">
+              </div>
+              <div class="form-group">
+                <label for="quickAccountName"><i class="fas fa-user"></i> Name</label>
+                <input type="text" id="quickAccountName" placeholder="e.g., 홍길동" class="form-control">
+              </div>
+            </div>
+            <button id="createQuickAccountBtn" class="btn btn-primary">
+              <i class="fas fa-user-plus"></i> Create Account
+            </button>
+          </div>
+        </div>
+
+        <div class="section card">
           <h2><i class="fas fa-user-clock"></i> Pending Approvals</h2>
           
           <div id="pendingRequestsList" class="requests-list">
@@ -418,6 +484,7 @@
   <script src="js/firebase-config.js"></script>
   <script src="js/company-utils.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/profile.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/database.js"></script>
   <script src="js/shift-manager.js"></script>
