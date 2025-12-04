@@ -13,6 +13,20 @@ const App = {
     
     // 아카이브 로드
     this.loadMyArchives();
+    
+    // Admin 패널 초기화
+    const user = Auth.getCurrentUser();
+    if (user && (user.role === 'master' || user.role === 'admin')) {
+      AdminPanel.init(user);
+    }
+    
+    // Display company name in header
+    if (user && user.companyName) {
+      const companyLabel = document.getElementById('currentCompanyName');
+      if (companyLabel) {
+        companyLabel.textContent = user.companyName;
+      }
+    }
   },
 
   // 탭 네비게이션 설정

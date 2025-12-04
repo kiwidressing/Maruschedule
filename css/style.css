@@ -856,6 +856,229 @@ body {
   }
 }
 
+/* Admin Panel Styles */
+.company-info-panel {
+  background-color: var(--bg-color);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-row label {
+  font-weight: 600;
+  min-width: 150px;
+  color: var(--text-light);
+}
+
+.invite-code-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.invite-code-large {
+  font-size: 24px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: var(--primary-color);
+  background-color: rgba(79, 70, 229, 0.1);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.role-badge.role-master {
+  background-color: #fbbf24;
+  color: #78350f;
+}
+
+.role-badge.role-admin {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.role-badge.role-employee {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+/* Requests List */
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.request-card {
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.request-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.request-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.request-user i {
+  font-size: 32px;
+  color: var(--text-light);
+}
+
+.request-user strong {
+  display: block;
+  color: var(--text-color);
+}
+
+.request-user small {
+  display: block;
+  color: var(--text-light);
+  font-size: 13px;
+}
+
+.request-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Members List */
+.members-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  background-color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.filter-btn .count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  background-color: var(--bg-color);
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.filter-btn.active {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.filter-btn.active .count {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.member-card {
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.member-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.member-avatar,
+.member-avatar-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.member-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-color);
+  border: 2px solid var(--border-color);
+  color: var(--text-light);
+  font-size: 24px;
+}
+
+.member-info {
+  flex: 1;
+}
+
+.member-info strong {
+  display: block;
+  color: var(--text-color);
+  margin-bottom: 2px;
+}
+
+.member-info small {
+  display: block;
+  color: var(--text-light);
+  font-size: 13px;
+}
+
+.provider-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  background-color: #ea4335;
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.member-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 /* 승인 대기 안내 */
 .pending-notice {
   text-align: center;

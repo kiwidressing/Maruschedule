@@ -162,6 +162,9 @@
         <button class="tab-btn" data-tab="all-shifts">
           <i class="fas fa-users"></i> All Staff
         </button>
+        <button class="tab-btn" data-tab="admin-panel" id="adminTabBtn" style="display: none;">
+          <i class="fas fa-user-shield"></i> Admin
+        </button>
       </div>
     </nav>
 
@@ -340,6 +343,67 @@
           </div>
         </div>
       </div>
+
+      <!-- Tab 4: Admin Panel -->
+      <div id="admin-panel" class="tab-content" style="display: none;">
+        <div class="section card">
+          <h2><i class="fas fa-user-shield"></i> Company Management</h2>
+          
+          <div class="company-info-panel" id="companyInfoPanel">
+            <div class="info-row">
+              <label>Company Name:</label>
+              <span id="adminCompanyName">-</span>
+            </div>
+            <div class="info-row">
+              <label>Invite Code:</label>
+              <div class="invite-code-display">
+                <code id="adminInviteCode" class="invite-code-large">------</code>
+                <button id="copyInviteCodeBtn" class="btn btn-secondary btn-sm">
+                  <i class="fas fa-copy"></i> Copy
+                </button>
+              </div>
+            </div>
+            <div class="info-row">
+              <label>Your Role:</label>
+              <span id="adminUserRole" class="role-badge">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section card">
+          <h2><i class="fas fa-user-clock"></i> Pending Approvals</h2>
+          
+          <div id="pendingRequestsList" class="requests-list">
+            <div class="empty-state">
+              <i class="fas fa-inbox"></i>
+              <p>No pending requests</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section card">
+          <h2><i class="fas fa-users"></i> Company Members</h2>
+          
+          <div class="members-filters">
+            <button class="filter-btn active" data-filter="all">
+              All <span class="count" id="countAll">0</span>
+            </button>
+            <button class="filter-btn" data-filter="admin">
+              Admins <span class="count" id="countAdmins">0</span>
+            </button>
+            <button class="filter-btn" data-filter="employee">
+              Employees <span class="count" id="countEmployees">0</span>
+            </button>
+          </div>
+
+          <div id="membersList" class="members-list">
+            <div class="empty-state">
+              <i class="fas fa-users-slash"></i>
+              <p>No members found</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <!-- Footer -->
@@ -354,6 +418,7 @@
   <script src="js/firebase-config.js"></script>
   <script src="js/company-utils.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
   <script src="js/database.js"></script>
   <script src="js/shift-manager.js"></script>
   <script src="js/export.js"></script>
