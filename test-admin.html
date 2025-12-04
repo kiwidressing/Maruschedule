@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel Test</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+</head>
+<body>
+    <div style="padding: 20px;">
+        <h1>Admin Panel Test</h1>
+        <p>이 페이지는 Admin 패널이 올바르게 표시되는지 테스트합니다.</p>
+        
+        <button onclick="showAdminPanel()" class="btn btn-primary">Admin 패널 표시</button>
+        
+        <div id="admin-panel" style="display: block; margin-top: 20px;">
+            <div class="section card">
+                <h2><i class="fas fa-user-shield"></i> Company Management</h2>
+                
+                <div class="company-info-panel">
+                    <div class="info-row">
+                        <label>Company Name:</label>
+                        <span>테스트 회사</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Invite Code:</label>
+                        <div class="invite-code-display">
+                            <code class="invite-code-large">ABC123</code>
+                            <button class="btn btn-secondary btn-sm">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <label>Your Role:</label>
+                        <span class="role-badge role-master">Master</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section card">
+                <h2><i class="fas fa-user-plus"></i> Quick Account Creation</h2>
+                <p class="help-text">Create a simple account (ID + name only) to distribute to employees</p>
+                
+                <div class="quick-account-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="quickAccountId"><i class="fas fa-id-card"></i> Employee ID</label>
+                            <input type="text" id="quickAccountId" placeholder="e.g., EMP001" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="quickAccountName"><i class="fas fa-user"></i> Name</label>
+                            <input type="text" id="quickAccountName" placeholder="e.g., 홍길동" class="form-control">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> Create Account
+                    </button>
+                </div>
+            </div>
+
+            <div class="section card">
+                <h2><i class="fas fa-user-clock"></i> Pending Approvals</h2>
+                
+                <div class="requests-list">
+                    <div class="request-card">
+                        <div class="request-header">
+                            <div class="request-user">
+                                <i class="fas fa-user-circle"></i>
+                                <div>
+                                    <strong>홍길동</strong>
+                                    <small>hong@example.com</small>
+                                </div>
+                            </div>
+                            <span class="role-badge role-employee">Employee</span>
+                        </div>
+                        <div class="request-actions">
+                            <button class="btn btn-success btn-sm">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button class="btn btn-danger btn-sm">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section card">
+                <h2><i class="fas fa-users"></i> Company Members</h2>
+                
+                <div class="members-filters">
+                    <button class="filter-btn active" data-filter="all">
+                        All <span class="count">3</span>
+                    </button>
+                    <button class="filter-btn" data-filter="admin">
+                        Admins <span class="count">1</span>
+                    </button>
+                    <button class="filter-btn" data-filter="employee">
+                        Employees <span class="count">2</span>
+                    </button>
+                </div>
+
+                <div class="members-list">
+                    <div class="member-card">
+                        <div class="member-header">
+                            <div class="member-avatar-placeholder">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="member-info">
+                                <strong>이민호</strong>
+                                <small>minho@example.com</small>
+                            </div>
+                            <span class="role-badge role-master">Master</span>
+                        </div>
+                    </div>
+                    
+                    <div class="member-card">
+                        <div class="member-header">
+                            <div class="member-avatar-placeholder">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="member-info">
+                                <strong>김철수</strong>
+                                <small>kim@example.com</small>
+                            </div>
+                            <span class="role-badge role-employee">Employee</span>
+                        </div>
+                        <div class="member-actions">
+                            <button class="btn btn-secondary btn-sm">
+                                <i class="fas fa-user-shield"></i> Promote to Admin
+                            </button>
+                            <button class="btn btn-danger btn-sm">
+                                <i class="fas fa-user-times"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showAdminPanel() {
+            document.getElementById('admin-panel').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

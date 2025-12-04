@@ -13,42 +13,62 @@ const AdminPanel = (function() {
     let currentFilter = 'all';
 
     /**
+     * Show debug alert on screen
+     */
+    function showDebugAlert(message, type = 'info') {
+        const debugDiv = document.getElementById('debugMessages');
+        if (debugDiv) {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'warning' ? 'orange' : 'green';
+            debugDiv.innerHTML += `<div style="color: ${color}; margin: 5px 0;">[${timestamp}] ${message}</div>`;
+            debugDiv.style.display = 'block';
+        }
+        console.log(message);
+    }
+
+    /**
      * Initialize admin panel
      */
     async function init(user) {
-        currentUser = user;
-        
-        console.log('🔧 Admin Panel Init - User:', user);
-        console.log('🔧 User role:', user?.role);
-        console.log('🔧 User companyId:', user?.companyId);
-        
-        // Show/hide admin tab based on role
-        const adminTabBtn = document.getElementById('adminTabBtn');
-        if (user && (user.role === 'master' || user.role === 'admin')) {
-            if (adminTabBtn) {
-                adminTabBtn.style.display = 'block';
-                console.log('✅ Admin tab button shown for ' + user.role);
+        try {
+            showDebugAlert('🔧 Admin Panel Init 시작', 'info');
+            currentUser = user;
+            
+            showDebugAlert(`🔧 User: ${user ? JSON.stringify(user) : 'null'}`, 'info');
+            showDebugAlert(`🔧 User role: ${user?.role}`, 'info');
+            showDebugAlert(`🔧 User companyId: ${user?.companyId}`, 'info');
+            
+            // Show/hide admin tab based on role
+            const adminTabBtn = document.getElementById('adminTabBtn');
+            if (user && (user.role === 'master' || user.role === 'admin')) {
+                if (adminTabBtn) {
+                    adminTabBtn.style.display = 'block';
+                    showDebugAlert(`✅ Admin tab button shown for ${user.role}`, 'info');
+                }
+            } else {
+                if (adminTabBtn) {
+                    adminTabBtn.style.display = 'none';
+                }
+                showDebugAlert('⚠️ User is not admin/master, hiding admin tab', 'warning');
+                return;
             }
-        } else {
-            if (adminTabBtn) {
-                adminTabBtn.style.display = 'none';
+
+            // Load company data
+            if (user && user.companyId) {
+                showDebugAlert('📊 Loading company data...', 'info');
+                await loadCompanyData();
+                await loadPendingRequests();
+                await loadCompanyMembers();
+            } else {
+                showDebugAlert('⚠️ No company ID found for user', 'warning');
             }
-            console.log('⚠️ User is not admin/master, hiding admin tab');
-            return;
-        }
 
-        // Load company data
-        if (user && user.companyId) {
-            console.log('📊 Loading company data...');
-            await loadCompanyData();
-            await loadPendingRequests();
-            await loadCompanyMembers();
-        } else {
-            console.warn('⚠️ No company ID found for user');
+            setupEventListeners();
+            showDebugAlert('✅ Admin Panel initialized', 'info');
+        } catch (error) {
+            showDebugAlert(`❌ Admin Panel Init 오류: ${error.message}`, 'error');
+            console.error('Admin Panel Init Error:', error);
         }
-
-        setupEventListeners();
-        console.log('✅ Admin Panel initialized');
     }
 
     /**
@@ -82,17 +102,22 @@ const AdminPanel = (function() {
      */
     async function loadCompanyData() {
         try {
+            showDebugAlert(`📊 회사 데이터 로드 중... companyId: ${currentUser.companyId}`, 'info');
             currentCompany = await CompanyUtils.getCompanyById(currentUser.companyId);
             
             if (currentCompany) {
+                showDebugAlert(`✅ 회사 데이터 로드 완료: ${currentCompany.name}`, 'info');
                 document.getElementById('adminCompanyName').textContent = currentCompany.name;
                 document.getElementById('adminInviteCode').textContent = currentCompany.invite_code;
                 document.getElementById('adminUserRole').textContent = 
                     currentUser.role === 'master' ? 'Master' : 'Admin';
                 document.getElementById('adminUserRole').className = 
                     `role-badge role-${currentUser.role}`;
+            } else {
+                showDebugAlert('⚠️ 회사 데이터가 null입니다', 'warning');
             }
         } catch (error) {
+            showDebugAlert(`❌ 회사 데이터 로드 오류: ${error.message}`, 'error');
             console.error('Error loading company data:', error);
         }
     }
@@ -102,9 +127,12 @@ const AdminPanel = (function() {
      */
     async function loadPendingRequests() {
         try {
+            showDebugAlert('📋 대기 중인 승인 요청 로드 중...', 'info');
             pendingRequests = await CompanyUtils.getPendingRequests(currentUser.companyId);
+            showDebugAlert(`✅ 승인 요청 ${pendingRequests.length}건 로드 완료`, 'info');
             renderPendingRequests();
         } catch (error) {
+            showDebugAlert(`❌ 승인 요청 로드 오류: ${error.message}`, 'error');
             console.error('Error loading pending requests:', error);
             showError('Failed to load pending requests');
         }
@@ -194,7 +222,11 @@ const AdminPanel = (function() {
      */
     async function loadCompanyMembers() {
         try {
+            showDebugAlert('👥 회사 멤버 로드 중...', 'info');
             const db = firebase.firestore();
+            if (!db) {
+                throw new Error('Firestore가 초기화되지 않았습니다');
+            }
             const snapshot = await db.collection('users')
                 .where('company_id', '==', currentUser.companyId)
                 .where('status', '==', 'active')
@@ -208,9 +240,11 @@ const AdminPanel = (function() {
                 });
             });
 
+            showDebugAlert(`✅ 회사 멤버 ${companyMembers.length}명 로드 완료`, 'info');
             updateMemberCounts();
             renderMembers();
         } catch (error) {
+            showDebugAlert(`❌ 회사 멤버 로드 오류: ${error.message}`, 'error');
             console.error('Error loading members:', error);
             showError('Failed to load members');
         }

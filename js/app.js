@@ -21,10 +21,18 @@ const App = {
     
     // Admin 패널 초기화
     const user = Auth.getCurrentUser();
+    console.log('🔧 App.js - getCurrentUser:', user);
+    
     if (user && (user.role === 'master' || user.role === 'admin')) {
       if (typeof AdminPanel !== 'undefined') {
+        console.log('🔧 App.js - Initializing AdminPanel');
         AdminPanel.init(user);
+      } else {
+        console.error('❌ AdminPanel is undefined');
+        alert('AdminPanel 모듈을 찾을 수 없습니다. js/admin.js 파일이 로드되었는지 확인하세요.');
       }
+    } else {
+      console.log('🔧 App.js - User is not admin/master or user is null');
     }
     
     // Display company name in header
@@ -76,8 +84,16 @@ const App = {
       console.log('🔧 Admin tab switched - reloading data');
       const user = Auth.getCurrentUser();
       if (user && typeof AdminPanel !== 'undefined') {
-        AdminPanel.loadPendingRequests();
-        AdminPanel.loadCompanyMembers();
+        try {
+          AdminPanel.loadPendingRequests();
+          AdminPanel.loadCompanyMembers();
+        } catch (error) {
+          console.error('❌ Admin tab reload error:', error);
+          alert(`Admin 탭 데이터 로드 오류: ${error.message}`);
+        }
+      } else {
+        console.error('❌ AdminPanel is undefined or user is null');
+        alert('Admin 패널을 초기화할 수 없습니다. 로그인 상태를 확인하세요.');
       }
     }
   },
