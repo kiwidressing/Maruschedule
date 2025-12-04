@@ -4,8 +4,9 @@ const Auth = {
 
   // 초기화
   init() {
-    this.checkSession();
+    this.companyCache = {};
     this.setupEventListeners();
+    this.checkSession();
   },
 
   // 세션 확인
@@ -14,7 +15,12 @@ const Auth = {
     if (userJson) {
       try {
         this.currentUser = JSON.parse(userJson);
-        this.showApp();
+        if (this.currentUser.status && this.currentUser.status !== 'active') {
+          this.showAuthModal();
+          this.showPendingNotice('승인이 완료될 때까지 기다려 주세요.');
+        } else {
+          this.showApp();
+        }
       } catch (e) {
         console.error('세션 파싱 에러:', e);
         this.showAuthModal();
@@ -54,14 +60,19 @@ const Auth = {
       this.handleLogout();
     });
 
-    // Google 로그인 버튼
+    // Google 로그인 버튼 (임시 안내)
     document.getElementById('googleLoginBtn').addEventListener('click', () => {
       this.handleGoogleLogin();
     });
 
     document.getElementById('googleSignupBtn').addEventListener('click', () => {
-      this.handleGoogleLogin();
+      alert('Google 연동 회원가입은 준비 중입니다. 이메일 회원가입을 이용해주세요.');
     });
+
+    // 역할 선택 라디오 버튼 변경 시 필드 업데이트
+    const roleRadios = document.querySelectorAll('input[name="registerRole"]');
+    roleRadios.forEach(radio => radio.addEventListener('change', () => this.updateRoleFields()));
+    this.updateRoleFields();
 
     // Firebase Auth State 변경 감지
     if (auth) {
@@ -124,18 +135,32 @@ const Auth = {
       // 비밀번호 확인
       const hashedPassword = this.hashPassword(password);
       
-      if (user.password === hashedPassword) {
-        // 로그인 성공
-        this.currentUser = {
-          id: userDoc.id,
-          username: user.username,
-          email: user.email
-        };
-        localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-        this.showApp();
-      } else {
+      if (user.password !== hashedPassword) {
         alert('비밀번호가 일치하지 않습니다.');
+        return;
       }
+
+      if (user.status && user.status !== 'active') {
+        const message = user.status === 'pending'
+          ? '승인 대기 중입니다. 관리자 승인 후 다시 로그인해주세요.'
+          : '이 계정은 현재 사용이 제한되어 있습니다. 관리자에게 문의해주세요.';
+        this.showPendingNotice(message);
+        return;
+      }
+
+      const companyName = user.company_name || null;
+
+      this.currentUser = {
+        id: userDoc.id,
+        username: user.username,
+        email: user.email,
+        role: user.role || 'employee',
+        status: user.status || 'active',
+        companyId: user.company_id || null,
+        companyName
+      };
+      localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+      this.showApp();
     } catch (error) {
       console.error('로그인 에러:', error);
       alert('로그인 중 오류가 발생했습니다: ' + error.message);
@@ -145,9 +170,12 @@ const Auth = {
   // 회원가입 처리
   async handleRegister() {
     const name = document.getElementById('registerName').value.trim();
-    const email = document.getElementById('registerEmail').value.trim();
+    const email = document.getElementById('registerEmail').value.trim().toLowerCase();
     const password = document.getElementById('registerPassword').value;
     const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+    const role = (document.querySelector('input[name="registerRole"]:checked') || {}).value || 'employee';
+    const companyName = document.getElementById('registerCompanyName').value.trim();
+    const companyCodeInput = document.getElementById('registerCompanyCode').value.trim().toUpperCase();
 
     // 유효성 검사
     if (!name || !email || !password) {
@@ -171,32 +199,100 @@ const Auth = {
     }
 
     try {
-      // Firestore에서 이메일 중복 확인
       const usersRef = db.collection('users');
-      const snapshot = await usersRef.where('email', '==', email).get();
-      
-      if (!snapshot.empty) {
-        alert('이미 등록된 이메일입니다.');
+      const companiesRef = db.collection('companies');
+
+      // 이메일 중복 확인
+      const existing = await usersRef.where('email', '==', email).get();
+      if (!existing.empty) {
+        alert('이미 등록된 이메일입니다. 다른 이메일을 사용해주세요.');
         return;
       }
 
-      // 사용자 생성
-      const hashedPassword = this.hashPassword(password);
-      const newUser = {
+      let hashedPassword = this.hashPassword(password);
+      const baseUserData = {
         username: name,
-        email: email,
+        email,
         password: hashedPassword,
+        role,
+        auth_provider: 'local',
+        status: 'pending',
         created_at: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-      // Firestore에 저장
-      await usersRef.add(newUser);
-      
-      alert('회원가입이 완료되었습니다! 로그인해주세요.');
-      this.showLoginForm();
-      
-      // 폼 초기화
+      if (role === 'master') {
+        if (!companyName) {
+          alert('기업명을 입력해주세요.');
+          return;
+        }
+
+        // 사용자 문서 생성
+        const userDocRef = await usersRef.add({
+          ...baseUserData,
+          role: 'master',
+          status: 'active',
+          company_id: null // Will be updated after company creation
+        });
+
+        // CompanyUtils를 사용하여 기업 생성
+        try {
+          const company = await CompanyUtils.createCompany(companyName, userDocRef.id);
+          
+          // 사용자 문서에 company_id 업데이트
+          await userDocRef.update({
+            company_id: company.id
+          });
+
+          this.currentUser = {
+            id: userDocRef.id,
+            username: name,
+            email,
+            role: 'master',
+            status: 'active',
+            companyId: company.id,
+            companyName: companyName,
+            inviteCode: company.invite_code
+          };
+          localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+          this.showApp();
+          alert(`기업이 생성되었습니다!\n\n기업명: ${companyName}\n초대 코드: ${company.invite_code}\n\n이 코드를 관리자와 직원에게 공유하세요.`);
+          document.getElementById('registerForm').reset();
+          this.updateRoleFields();
+          return;
+        } catch (companyError) {
+          // 기업 생성 실패 시 사용자 문서 삭제
+          await userDocRef.delete();
+          throw companyError;
+        }
+      }
+
+      // 관리자/직원 가입 처리
+      if (!companyCodeInput || companyCodeInput.length !== 6) {
+        alert('6자리 기업 초대 코드를 정확히 입력해주세요.');
+        return;
+      }
+
+      // CompanyUtils로 기업 확인
+      const company = await CompanyUtils.getCompanyByInviteCode(companyCodeInput);
+      if (!company) {
+        alert('해당 기업 코드를 찾을 수 없습니다. 정확한 코드를 입력했는지 확인해주세요.');
+        return;
+      }
+
+      // 사용자 문서 생성 (pending 상태)
+      const userDocRef = await usersRef.add({
+        ...baseUserData,
+        company_id: company.id,
+        status: 'pending'
+      });
+
+      // CompanyUtils로 가입 요청 생성
+      await CompanyUtils.createJoinRequest(userDocRef.id, company.id, role);
+
+      alert(`가입 요청이 접수되었습니다!\n\n기업명: ${company.name}\n요청 역할: ${role === 'admin' ? '관리자' : '직원'}\n\n관리자 승인이 완료되면 로그인하실 수 있습니다.`);
       document.getElementById('registerForm').reset();
+      this.updateRoleFields();
+      this.showLoginForm();
     } catch (error) {
       console.error('회원가입 에러:', error);
       alert('회원가입 중 오류가 발생했습니다: ' + error.message);
@@ -287,8 +383,8 @@ const Auth = {
       }
 
       // 2) Fallback to email lookup
-      if (!userDoc) {
-        const byEmail = await usersRef.where('email', '==', firebaseUser.email).limit(1).get();
+      if (!userDoc && firebaseUser.email) {
+        const byEmail = await usersRef.where('email', '==', firebaseUser.email.toLowerCase()).limit(1).get();
         if (!byEmail.empty) {
           userDoc = byEmail.docs[0];
           console.log('ℹ️ Matched Firestore user by email:', userDoc.id);
@@ -299,17 +395,17 @@ const Auth = {
         console.log('🆕 Creating new Firestore user for Google account');
         const newUser = {
           username: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Google User'),
-          email: firebaseUser.email,
+          email: firebaseUser.email ? firebaseUser.email.toLowerCase() : '',
           password: 'google_auth',
           auth_provider: 'google',
           firebase_uid: firebaseUser.uid || null,
           photoURL: firebaseUser.photoURL || null,
+          status: 'pending',
           created_at: firebase.firestore.FieldValue.serverTimestamp()
         };
 
         let docRef;
         if (firebaseUser.uid) {
-          // Save with deterministic ID for easier lookups later
           docRef = usersRef.doc(firebaseUser.uid);
           await docRef.set(newUser, { merge: true });
         } else {
@@ -339,10 +435,23 @@ const Auth = {
       const userData = userDoc.data();
       console.log('✅ Firestore user data:', userData);
 
+      if (!userData.company_id || userData.status !== 'active') {
+        this.showPendingNotice('Google 계정은 아직 기업에 연결되지 않았습니다. 관리자에게 승인 요청을 해주세요.');
+        localStorage.removeItem('currentUser');
+        if (auth && auth.currentUser) {
+          await auth.signOut();
+        }
+        return;
+      }
+
       this.currentUser = {
         id: userDoc.id,
         username: userData.username,
         email: userData.email,
+        role: userData.role || 'employee',
+        status: userData.status || 'active',
+        companyId: userData.company_id,
+        companyName: userData.company_name || '',
         photoURL: userData.photoURL || firebaseUser.photoURL || null,
         firebaseUid: userData.firebase_uid || firebaseUser.uid || null
       };
@@ -401,6 +510,63 @@ const Auth = {
   // 현재 사용자 정보 가져오기
   getCurrentUser() {
     return this.currentUser;
+  },
+
+  // 역할에 따라 폼 필드 표시/숨김 전환
+  updateRoleFields() {
+    const selectedRole = document.querySelector('input[name="registerRole"]:checked');
+    if (!selectedRole) return;
+
+    const role = selectedRole.value;
+    const companyNameGroup = document.getElementById('companyNameGroup');
+    const companyCodeGroup = document.getElementById('companyCodeGroup');
+    const registerHelpText = document.getElementById('registerHelpText');
+
+    if (role === 'master') {
+      // Master: 기업명 입력 필요
+      companyNameGroup.style.display = 'block';
+      companyCodeGroup.style.display = 'none';
+      document.getElementById('registerCompanyName').required = true;
+      document.getElementById('registerCompanyCode').required = false;
+      registerHelpText.textContent = 'Master 계정으로 가입하면 새로운 기업을 생성하고 관리자를 임명할 수 있습니다.';
+    } else {
+      // Admin/Employee: 기업 코드 입력 필요
+      companyNameGroup.style.display = 'none';
+      companyCodeGroup.style.display = 'block';
+      document.getElementById('registerCompanyName').required = false;
+      document.getElementById('registerCompanyCode').required = true;
+      
+      if (role === 'admin') {
+        registerHelpText.textContent = '관리자로 가입하려면 기업에서 발급한 6자리 초대 코드가 필요합니다. 승인 후 직원 관리 권한이 부여됩니다.';
+      } else {
+        registerHelpText.textContent = '직원으로 가입하려면 기업에서 발급한 6자리 초대 코드가 필요합니다.';
+      }
+    }
+  },
+
+  // 승인 대기 안내 표시
+  showPendingNotice(message) {
+    const modal = document.getElementById('authModal');
+    const modalBody = modal.querySelector('.modal-body');
+    
+    // 기존 폼 숨기기
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'none';
+    
+    // 안내 메시지 표시
+    const noticeDiv = document.createElement('div');
+    noticeDiv.className = 'pending-notice';
+    noticeDiv.innerHTML = `
+      <div class="notice-icon">
+        <i class="fas fa-hourglass-half"></i>
+      </div>
+      <h3>승인 대기 중</h3>
+      <p>${message}</p>
+      <button class="btn btn-primary" onclick="location.reload()">확인</button>
+    `;
+    
+    modalBody.innerHTML = '';
+    modalBody.appendChild(noticeDiv);
   }
 };
 

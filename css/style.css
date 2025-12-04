@@ -101,6 +101,25 @@ body {
   gap: 8px;
 }
 
+.role-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.role-options label {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.role-options input[type="radio"] {
+  accent-color: var(--primary-color);
+}
+
 .form-group label {
   font-size: 14px;
   font-weight: 600;
@@ -220,6 +239,34 @@ body {
   text-decoration: underline;
 }
 
+.pending-notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background-color: rgba(79, 70, 229, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.15);
+  padding: 14px 16px;
+  border-radius: 10px;
+  color: var(--primary-dark);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pending-notice i {
+  font-size: 24px;
+  margin-top: 4px;
+}
+
+.pending-notice strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.pending-notice p {
+  margin: 0;
+  color: #312e81;
+}
+
 /* 구분선 */
 .divider {
   display: flex;
@@ -286,9 +333,23 @@ body {
   gap: 16px;
 }
 
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
 .user-info span {
   font-weight: 600;
   color: var(--text-color);
+}
+
+.company-label {
+  font-size: 12px;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 /* 탭 네비게이션 */
@@ -793,6 +854,83 @@ body {
   .staff-name {
     font-size: 16px;
   }
+}
+
+/* 승인 대기 안내 */
+.pending-notice {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.pending-notice .notice-icon {
+  font-size: 64px;
+  color: var(--warning-color);
+  margin-bottom: 20px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pending-notice h3 {
+  font-size: 24px;
+  margin-bottom: 12px;
+  color: var(--text-color);
+}
+
+.pending-notice p {
+  font-size: 16px;
+  color: var(--text-light);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+/* 역할 선택 옵션 */
+.role-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.role-options label {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.role-options label:hover {
+  border-color: var(--primary-color);
+  background-color: rgba(79, 70, 229, 0.05);
+}
+
+.role-options input[type="radio"] {
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.role-options input[type="radio"]:checked + span,
+.role-options label:has(input:checked) {
+  border-color: var(--primary-color);
+  background-color: rgba(79, 70, 229, 0.1);
+  font-weight: 600;
+}
+
+.help-text {
+  font-size: 14px;
+  color: var(--text-light);
+  margin-top: 8px;
+  line-height: 1.5;
 }
 
 @media print {

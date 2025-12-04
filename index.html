@@ -74,14 +74,42 @@
             <label for="registerPasswordConfirm"><i class="fas fa-lock"></i> Confirm Password</label>
             <input type="password" id="registerPasswordConfirm" required placeholder="Re-enter your password">
           </div>
+
+          <div class="form-group">
+            <label><i class="fas fa-users-cog"></i> Account Type</label>
+            <div class="role-options" id="roleOptions">
+              <label><input type="radio" name="registerRole" value="master" checked> Master (기업 생성)</label>
+              <label><input type="radio" name="registerRole" value="admin"> Admin (기업 관리자)</label>
+              <label><input type="radio" name="registerRole" value="employee"> Employee (직원)</label>
+            </div>
+          </div>
+
+          <div class="form-group" id="companyNameGroup">
+            <label for="registerCompanyName"><i class="fas fa-building"></i> Company Name</label>
+            <input type="text" id="registerCompanyName" placeholder="예: 케이테크">
+            <p class="help-text">Master 계정은 새로운 기업을 생성합니다. 기업명 기반으로 6자리 코드가 발급됩니다.</p>
+          </div>
+
+          <div class="form-group" id="companyCodeGroup" style="display: none;">
+            <label for="registerCompanyCode"><i class="fas fa-key"></i> Company Invite Code</label>
+            <input type="text" id="registerCompanyCode" placeholder="기업에서 발급받은 6자리 코드" maxlength="6" autocapitalize="characters">
+            <p class="help-text">관리자/직원은 반드시 회사에서 공유한 초대 코드를 입력해야 합니다.</p>
+          </div>
+
+          <div class="form-group" id="registerNotes">
+            <p class="help-text" id="registerHelpText">
+              Master 계정으로 가입하면 기업 생성과 관리자 임명 권한이 부여됩니다.
+            </p>
+          </div>
+
           <button type="submit" class="btn btn-primary btn-block">
             <i class="fas fa-user-plus"></i> Sign Up
           </button>
-          
+
           <div class="divider">
             <span>OR</span>
           </div>
-          
+
           <button type="button" id="googleSignupBtn" class="btn btn-google btn-block">
             <i class="fab fa-google"></i> Sign up with Google
           </button>
@@ -90,6 +118,14 @@
             Already have an account? <a href="#" id="showLogin">Login</a>
           </p>
         </form>
+
+        <div id="pendingNotice" class="pending-notice" style="display: none;">
+          <i class="fas fa-hourglass-half"></i>
+          <div>
+            <strong>승인 대기 중입니다.</strong>
+            <p>관리자 승인이 완료되면 이메일로 알려드립니다. 잠시만 기다려 주세요.</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -102,7 +138,10 @@
         <div class="header-content">
           <h1><i class="fas fa-calendar-check"></i> Shift Schedule Manager</h1>
           <div class="user-info">
-            <span id="currentUserName">User</span>
+            <div class="user-meta">
+              <span id="currentUserName">User</span>
+              <small id="currentCompanyName" class="company-label"></small>
+            </div>
             <button id="logoutBtn" class="btn btn-secondary">
               <i class="fas fa-sign-out-alt"></i> Logout
             </button>
@@ -313,6 +352,7 @@
 
   <!-- JavaScript -->
   <script src="js/firebase-config.js"></script>
+  <script src="js/company-utils.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/database.js"></script>
   <script src="js/shift-manager.js"></script>
