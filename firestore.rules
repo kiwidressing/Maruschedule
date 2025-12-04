@@ -1,0 +1,160 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isUserActive() {
+      return getUserData().status == 'active';
+    }
+    
+    function isMaster() {
+      return isAuthenticated() && getUserData().role == 'master';
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (getUserData().role == 'admin' || getUserData().role == 'master');
+    }
+    
+    function isSameCompany(companyId) {
+      return isAuthenticated() && getUserData().company_id == companyId;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Companies Collection
+    match /companies/{companyId} {
+      // Anyone can read companies (for invite code lookup)
+      allow read: if true;
+      
+      // Only master can create companies (enforced by app logic)
+      allow create: if isAuthenticated();
+      
+      // Only master of the company can update
+      allow update: if isAuthenticated() && 
+                       resource.data.created_by == request.auth.uid &&
+                       getUserData().role == 'master';
+      
+      // No one can delete companies
+      allow delete: if false;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      // Users can read their own data
+      allow read: if isOwner(userId);
+      
+      // Company members can read other members in same company
+      allow read: if isAuthenticated() && 
+                     isSameCompany(resource.data.company_id);
+      
+      // Anyone can create a user (signup)
+      allow create: if true;
+      
+      // Users can update their own data
+      allow update: if isOwner(userId);
+      
+      // Admins can update users in their company (for approval, role changes)
+      allow update: if isAdmin() && 
+                       isSameCompany(resource.data.company_id);
+      
+      // No deletion allowed
+      allow delete: if false;
+    }
+
+    // Pending Invites Collection
+    match /pendingInvites/{requestId} {
+      // Users can read their own pending requests
+      allow read: if isAuthenticated() && 
+                     resource.data.user_id == request.auth.uid;
+      
+      // Admins can read pending requests for their company
+      allow read: if isAdmin() && 
+                     isSameCompany(resource.data.company_id);
+      
+      // Anyone can create a pending invite (signup process)
+      allow create: if true;
+      
+      // Admins can update (approve/reject) pending invites for their company
+      allow update: if isAdmin() && 
+                       isSameCompany(resource.data.company_id);
+      
+      // No deletion
+      allow delete: if false;
+    }
+
+    // Shifts Collection
+    match /shifts/{shiftId} {
+      // Users can read their own shifts
+      allow read: if isAuthenticated() && 
+                     resource.data.user_id == request.auth.uid;
+      
+      // Company members can read shifts from same company
+      allow read: if isAuthenticated() && 
+                     isSameCompany(resource.data.company_id);
+      
+      // Users can create their own shifts
+      allow create: if isAuthenticated() && 
+                       request.resource.data.user_id == request.auth.uid &&
+                       isSameCompany(request.resource.data.company_id);
+      
+      // Users can update their own shifts
+      allow update: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+      
+      // Admins can update any shift in their company
+      allow update: if isAdmin() && 
+                       isSameCompany(resource.data.company_id);
+      
+      // Users can delete their own shifts
+      allow delete: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+      
+      // Admins can delete shifts in their company
+      allow delete: if isAdmin() && 
+                       isSameCompany(resource.data.company_id);
+    }
+
+    // Archives Collection
+    match /archives/{archiveId} {
+      // Users can read their own archives
+      allow read: if isAuthenticated() && 
+                     resource.data.user_id == request.auth.uid;
+      
+      // Company members can read archives from same company
+      allow read: if isAuthenticated() && 
+                     isSameCompany(resource.data.company_id);
+      
+      // Users can create their own archives
+      allow create: if isAuthenticated() && 
+                       request.resource.data.user_id == request.auth.uid &&
+                       isSameCompany(request.resource.data.company_id);
+      
+      // Users can update their own archives
+      allow update: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+      
+      // Users can delete their own archives
+      allow delete: if isAuthenticated() && 
+                       resource.data.user_id == request.auth.uid;
+      
+      // Admins can delete archives in their company
+      allow delete: if isAdmin() && 
+                       isSameCompany(resource.data.company_id);
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
