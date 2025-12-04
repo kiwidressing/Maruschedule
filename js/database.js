@@ -32,16 +32,23 @@ const Database = {
   async saveShift(shiftData) {
     try {
       if (!db) {
+        console.error('Firestore not initialized in saveShift');
         throw new Error('Firestore not initialized');
       }
+
+      console.log('Saving shift data:', shiftData);
 
       // Add company_id from current user
       const currentUser = Auth.getCurrentUser();
       if (currentUser && currentUser.companyId) {
         shiftData.company_id = currentUser.companyId;
+        console.log('Added company_id:', currentUser.companyId);
+      } else {
+        console.warn('No company_id available for current user');
       }
 
       // 기존 데이터 확인
+      console.log('Checking for existing shift...');
       const existing = await this.findShift(
         shiftData.user_id, 
         shiftData.week_start, 
@@ -50,21 +57,28 @@ const Database = {
 
       if (existing) {
         // 업데이트
+        console.log('Updating existing shift:', existing.id);
         await db.collection('shifts').doc(existing.id).update({
           ...shiftData,
           updated_at: firebase.firestore.FieldValue.serverTimestamp()
         });
+        console.log('✅ Shift updated successfully');
         return { success: true, id: existing.id };
       } else {
         // 새로 생성
+        console.log('Creating new shift...');
         const docRef = await db.collection('shifts').add({
           ...shiftData,
           created_at: firebase.firestore.FieldValue.serverTimestamp()
         });
+        console.log('✅ Shift created successfully:', docRef.id);
         return { success: true, id: docRef.id };
       }
     } catch (error) {
-      console.error('시프트 저장 에러:', error);
+      console.error('❌ 시프트 저장 에러:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Shift data that failed:', shiftData);
       throw error;
     }
   },
@@ -73,8 +87,11 @@ const Database = {
   async findShift(userId, weekStart, dayKey) {
     try {
       if (!db) {
+        console.error('Firestore not initialized in findShift');
         return null;
       }
+
+      console.log('Finding shift:', { userId, weekStart, dayKey });
 
       const snapshot = await db.collection('shifts')
         .where('user_id', '==', userId)
@@ -84,16 +101,24 @@ const Database = {
         .get();
       
       if (snapshot.empty) {
+        console.log('No existing shift found');
         return null;
       }
 
       const doc = snapshot.docs[0];
+      console.log('Found existing shift:', doc.id);
       return {
         id: doc.id,
         ...doc.data()
       };
     } catch (error) {
       console.error('시프트 찾기 에러:', error);
+      console.error('Error details:', error.message, error.code);
+      // If there's an index error, return null to allow creation
+      if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+        console.warn('Index missing, will create new shift');
+        return null;
+      }
       return null;
     }
   },
