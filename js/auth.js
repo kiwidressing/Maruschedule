@@ -593,7 +593,7 @@ const Auth = {
       }
 
       if (!userDoc) {
-        console.log('🆕 Creating new Firestore user for Google account');
+        console.log('🆕 Creating new Firestore user for Google account (personal account)');
         const newUser = {
           username: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Google User'),
           email: firebaseUser.email ? firebaseUser.email.toLowerCase() : '',
@@ -601,7 +601,9 @@ const Auth = {
           auth_provider: 'google',
           firebase_uid: firebaseUser.uid || null,
           photoURL: firebaseUser.photoURL || null,
-          status: 'pending',
+          role: 'personal',
+          account_type: 'google',
+          status: 'active',
           created_at: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -636,8 +638,33 @@ const Auth = {
       const userData = userDoc.data();
       console.log('✅ Firestore user data:', userData);
 
+      // 개인 계정 (role: 'personal')은 company_id 체크 생략
+      if (userData.role === 'personal') {
+        console.log('✅ Personal account detected - no company check needed');
+        
+        this.currentUser = {
+          id: userDoc.id,
+          uid: userDoc.id,
+          name: userData.username,
+          email: userData.email,
+          role: 'personal',
+          status: 'active',
+          companyId: null,
+          companyName: null,
+          photoURL: userData.photoURL || firebaseUser.photoURL || null,
+          firebaseUid: userData.firebase_uid || firebaseUser.uid || null,
+          accountType: 'google'
+        };
+
+        localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+        console.log('✅ Personal Google user logged in & stored in localStorage');
+        this.showApp();
+        return;
+      }
+
+      // 기업 계정은 company_id와 status 체크
       if (!userData.company_id || userData.status !== 'active') {
-        this.showPendingNotice('Google 계정은 아직 기업에 연결되지 않았습니다. 관리자에게 승인 요청을 해주세요.');
+        this.showPendingNotice('Google 계정이 기업에 연결되지 않았거나 승인 대기 중입니다.\n관리자에게 승인을 요청하거나, 개인 계정으로 사용하려면 로그아웃 후 다시 로그인하세요.');
         localStorage.removeItem('currentUser');
         if (auth && auth.currentUser) {
           await auth.signOut();
@@ -645,20 +672,31 @@ const Auth = {
         return;
       }
 
+      // 회사 정보 가져오기
+      let companyName = '';
+      if (userData.company_id) {
+        const companyDoc = await db.collection('companies').doc(userData.company_id).get();
+        if (companyDoc.exists) {
+          companyName = companyDoc.data().name;
+        }
+      }
+
       this.currentUser = {
         id: userDoc.id,
-        username: userData.username,
+        uid: userDoc.id,
+        name: userData.username,
         email: userData.email,
         role: userData.role || 'employee',
         status: userData.status || 'active',
         companyId: userData.company_id,
-        companyName: userData.company_name || '',
+        companyName: companyName,
         photoURL: userData.photoURL || firebaseUser.photoURL || null,
-        firebaseUid: userData.firebase_uid || firebaseUser.uid || null
+        firebaseUid: userData.firebase_uid || firebaseUser.uid || null,
+        accountType: 'google'
       };
 
       localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-      console.log('✅ Google user logged in & stored in localStorage');
+      console.log('✅ Business Google user logged in & stored in localStorage');
       this.showApp();
 
     } catch (error) {
