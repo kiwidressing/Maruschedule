@@ -18,23 +18,29 @@ const AdminPanel = (function() {
     async function init(user) {
         currentUser = user;
         
-        // Show/hide admin tab based on role
+        console.log('🔧 Admin Panel Init - User:', user);
+        console.log('🔧 User role:', user?.role);
+        console.log('🔧 User companyId:', user?.companyId);
+        
+        // Show admin tab for all users temporarily
         const adminTabBtn = document.getElementById('adminTabBtn');
-        if (user.role === 'master' || user.role === 'admin') {
+        if (adminTabBtn) {
             adminTabBtn.style.display = 'block';
-        } else {
-            adminTabBtn.style.display = 'none';
-            return;
+            console.log('✅ Admin tab button shown');
         }
 
         // Load company data
-        if (user.companyId) {
+        if (user && user.companyId) {
+            console.log('📊 Loading company data...');
             await loadCompanyData();
             await loadPendingRequests();
             await loadCompanyMembers();
+        } else {
+            console.warn('⚠️ No company ID found for user');
         }
 
         setupEventListeners();
+        console.log('✅ Admin Panel initialized');
     }
 
     /**

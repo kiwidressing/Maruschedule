@@ -21,8 +21,11 @@ const App = {
     
     // Admin 패널 초기화
     const user = Auth.getCurrentUser();
-    if (user && (user.role === 'master' || user.role === 'admin')) {
-      AdminPanel.init(user);
+    if (user) {
+      // Initialize for all users temporarily for testing
+      if (typeof AdminPanel !== 'undefined') {
+        AdminPanel.init(user);
+      }
     }
     
     // Display company name in header
