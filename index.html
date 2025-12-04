@@ -216,7 +216,7 @@
     <!-- Main Content -->
     <main class="container main-content">
       <!-- Tab 1: My Shifts -->
-      <div id="shift-input" class="tab-content active">
+      <div id="shift-input" class="tab-content active" style="display: block;">
         <div class="section card">
           <h2><i class="fas fa-calendar-week"></i> This Week's Schedule</h2>
           
@@ -338,7 +338,7 @@
       </div>
 
       <!-- Tab 2: My Archive -->
-      <div id="my-archive" class="tab-content">
+      <div id="my-archive" class="tab-content" style="display: none;">
         <div class="section card">
           <h2><i class="fas fa-archive"></i> Saved Schedules</h2>
           <p class="help-text">
@@ -355,7 +355,7 @@
       </div>
 
       <!-- Tab 3: All Staff -->
-      <div id="all-shifts" class="tab-content">
+      <div id="all-shifts" class="tab-content" style="display: none;">
         <div class="section card">
           <h2><i class="fas fa-users"></i> All Staff Schedules</h2>
           
@@ -391,12 +391,6 @@
 
       <!-- Tab 4: Admin Panel -->
       <div id="admin-panel" class="tab-content" style="display: none;">
-        <!-- Test Message to verify HTML rendering -->
-        <div style="background: yellow; padding: 20px; margin: 20px; border: 3px solid red; font-size: 20px; font-weight: bold;">
-          ⚠️ ADMIN TAB HTML이 렌더링되고 있습니다! ⚠️<br>
-          이 메시지가 보인다면 HTML은 정상입니다.
-        </div>
-        
         <!-- Debug Messages Display -->
         <div id="debugMessages" style="display: block; background: #f0f0f0; padding: 15px; margin-bottom: 20px; border: 2px solid #333; border-radius: 8px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px;">
           <strong>🐛 디버그 정보:</strong><br>

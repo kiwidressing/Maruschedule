@@ -5,7 +5,6 @@ const App = {
   // 초기화
   init() {
     console.log('🚀 App.init() 시작');
-    alert('🚀 App.init() 시작 - JavaScript가 실행되고 있습니다!');
     
     this.setupTabNavigation();
     this.setupExportButtons();
@@ -71,6 +70,7 @@ const App = {
     // 모든 탭 컨텐츠 숨기기
     document.querySelectorAll('.tab-content').forEach(content => {
       content.classList.remove('active');
+      content.style.display = 'none'; // Force hide
       console.log('🔧 Hiding tab:', content.id);
     });
 
@@ -86,16 +86,14 @@ const App = {
       console.log('✅ Tab button activated');
     } else {
       console.error('❌ Tab button not found!');
-      alert(`탭 버튼을 찾을 수 없습니다: ${tabId}`);
     }
     
     if (selectedContent) {
       selectedContent.classList.add('active');
-      selectedContent.style.display = 'block'; // Force display
+      selectedContent.style.display = 'block'; // Force show only selected tab
       console.log('✅ Tab content activated and forced visible');
     } else {
       console.error('❌ Tab content not found!');
-      alert(`탭 내용을 찾을 수 없습니다: ${tabId}`);
     }
 
     this.currentTab = tabId;
