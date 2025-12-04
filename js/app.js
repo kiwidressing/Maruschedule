@@ -21,8 +21,7 @@ const App = {
     
     // Admin 패널 초기화
     const user = Auth.getCurrentUser();
-    if (user) {
-      // Initialize for all users temporarily for testing
+    if (user && (user.role === 'master' || user.role === 'admin')) {
       if (typeof AdminPanel !== 'undefined') {
         AdminPanel.init(user);
       }
@@ -73,6 +72,13 @@ const App = {
     // 탭별 로드 처리
     if (tabId === 'my-archive') {
       this.loadMyArchives();
+    } else if (tabId === 'admin-panel') {
+      console.log('🔧 Admin tab switched - reloading data');
+      const user = Auth.getCurrentUser();
+      if (user && typeof AdminPanel !== 'undefined') {
+        AdminPanel.loadPendingRequests();
+        AdminPanel.loadCompanyMembers();
+      }
     }
   },
 

@@ -22,11 +22,19 @@ const AdminPanel = (function() {
         console.log('🔧 User role:', user?.role);
         console.log('🔧 User companyId:', user?.companyId);
         
-        // Show admin tab for all users temporarily
+        // Show/hide admin tab based on role
         const adminTabBtn = document.getElementById('adminTabBtn');
-        if (adminTabBtn) {
-            adminTabBtn.style.display = 'block';
-            console.log('✅ Admin tab button shown');
+        if (user && (user.role === 'master' || user.role === 'admin')) {
+            if (adminTabBtn) {
+                adminTabBtn.style.display = 'block';
+                console.log('✅ Admin tab button shown for ' + user.role);
+            }
+        } else {
+            if (adminTabBtn) {
+                adminTabBtn.style.display = 'none';
+            }
+            console.log('⚠️ User is not admin/master, hiding admin tab');
+            return;
         }
 
         // Load company data
