@@ -114,29 +114,57 @@ const Auth = {
 
     // Firebase Auth State 변경 감지
     if (auth) {
+      console.log('🔧 Setting up Firebase auth listeners...');
+      
       // 리다이렉트 결과 확인
       auth.getRedirectResult()
         .then((result) => {
+          console.log('🔄 getRedirectResult called');
           if (result && result.user) {
-            console.log('🔄 Redirect result user detected:', result.user.email);
-            this.handleFirebaseUser(result.user);
+            console.log('✅ Redirect result user detected:', result.user.email);
+            console.log('📧 User email:', result.user.email);
+            console.log('🆔 User UID:', result.user.uid);
+            console.log('📸 User photo:', result.user.photoURL);
+            
+            // 즉시 처리
+            this.handleFirebaseUser(result.user).catch((err) => {
+              console.error('❌ Error in handleFirebaseUser:', err);
+              alert(`Google 로그인 처리 중 오류가 발생했습니다:\n\n${err.message}\n\n다시 시도해주세요.`);
+              this.showAuthModal();
+            });
           } else {
             console.log('ℹ️ No redirect result user');
           }
         })
         .catch((error) => {
+          console.error('❌ Redirect result error:', error);
           if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/popup-blocked') {
-            console.error('Redirect result error:', error);
+            alert(`Google 로그인 리디렉트 오류:\n\n${error.message}`);
           }
         });
 
-      // 인증 상태 변경 감지
+      // 인증 상태 변경 감지 (리디렉트 후 한 번만 실행되도록)
+      let authStateProcessed = false;
       auth.onAuthStateChanged((user) => {
         if (user) {
-          console.log('👤 Firebase auth state changed:', user.email, 'currentUser set?', !!this.currentUser);
+          console.log('👤 Firebase auth state changed:', user.email);
+          console.log('🔍 currentUser exists?', !!this.currentUser);
+          console.log('🔍 authStateProcessed?', authStateProcessed);
         }
-        if (user && (!this.currentUser || this.currentUser.email !== user.email)) {
-          this.handleFirebaseUser(user);
+        
+        // 이미 처리했거나 currentUser가 있으면 무시
+        if (authStateProcessed || this.currentUser) {
+          console.log('⏭️ Skipping auth state change (already processed)');
+          return;
+        }
+        
+        if (user) {
+          authStateProcessed = true;
+          console.log('🔄 Processing auth state change for:', user.email);
+          this.handleFirebaseUser(user).catch((err) => {
+            console.error('❌ Error in auth state handler:', err);
+            authStateProcessed = false; // 실패 시 다시 시도 가능하도록
+          });
         }
       });
     }
@@ -700,8 +728,18 @@ const Auth = {
       this.showApp();
 
     } catch (error) {
-      console.error('Firebase user handling error:', error);
-      alert('Google 계정 정보를 처리하는 중 오류가 발생했습니다. 콘솔 로그를 확인해주세요.');
+      console.error('❌ Firebase user handling error:', error);
+      console.error('Error stack:', error.stack);
+      alert(`Google 계정 정보 처리 중 오류 발생:\n\n${error.message}\n\n콘솔 로그를 확인해주세요.`);
+      
+      // 오류 발생 시 로그아웃하고 로그인 화면으로
+      this.currentUser = null;
+      localStorage.removeItem('currentUser');
+      if (auth && auth.currentUser) {
+        await auth.signOut();
+      }
+      this.showAuthModal();
+      throw error; // 에러를 다시 던져서 호출자가 처리할 수 있도록
     }
   },
 
