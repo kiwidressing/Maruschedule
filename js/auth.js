@@ -69,6 +69,23 @@ const Auth = {
       alert('Google 연동 회원가입은 준비 중입니다. 이메일 회원가입을 이용해주세요.');
     });
 
+    // 간편 로그인 폼
+    document.getElementById('simpleLoginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.handleSimpleLogin();
+    });
+
+    // 간편 로그인 전환
+    document.getElementById('showSimpleLogin').addEventListener('click', (e) => {
+      e.preventDefault();
+      this.showSimpleLoginForm();
+    });
+
+    document.getElementById('showLoginFromSimple').addEventListener('click', (e) => {
+      e.preventDefault();
+      this.showLoginForm();
+    });
+
     // 역할 선택 라디오 버튼 변경 시 필드 업데이트
     const roleRadios = document.querySelectorAll('input[name="registerRole"]');
     roleRadios.forEach(radio => radio.addEventListener('change', () => this.updateRoleFields()));
@@ -185,6 +202,72 @@ const Auth = {
       this.showApp();
     } catch (error) {
       console.error('로그인 에러:', error);
+      alert('로그인 중 오류가 발생했습니다: ' + error.message);
+    }
+  },
+
+  // 간편 로그인 처리 (직원 ID만)
+  async handleSimpleLogin() {
+    const employeeId = document.getElementById('simpleLoginId').value.trim();
+
+    if (!employeeId) {
+      alert('직원 ID를 입력해주세요.');
+      return;
+    }
+
+    if (!db) {
+      alert('Firebase Firestore가 초기화되지 않았습니다.');
+      return;
+    }
+
+    try {
+      // Firestore에서 간편 계정 검색
+      const usersRef = db.collection('users');
+      const snapshot = await usersRef
+        .where('employee_id', '==', employeeId)
+        .where('account_type', '==', 'simple')
+        .get();
+
+      if (snapshot.empty) {
+        alert('등록되지 않은 직원 ID입니다.\n관리자에게 문의하세요.');
+        return;
+      }
+
+      const userDoc = snapshot.docs[0];
+      const user = userDoc.data();
+
+      // 승인 상태 확인
+      if (user.status !== 'active') {
+        alert('승인 대기 중입니다.\n관리자 승인 후 로그인할 수 있습니다.');
+        return;
+      }
+
+      // 회사 정보 가져오기
+      let companyName = '';
+      if (user.company_id) {
+        const companyDoc = await db.collection('companies').doc(user.company_id).get();
+        if (companyDoc.exists) {
+          companyName = companyDoc.data().name;
+        }
+      }
+
+      // 로그인 성공 - 세션 저장
+      this.currentUser = {
+        id: userDoc.id,
+        uid: userDoc.id,
+        name: user.name,
+        email: user.email || null,
+        employeeId: user.employee_id,
+        role: user.role,
+        companyId: user.company_id,
+        companyName: companyName,
+        status: user.status,
+        accountType: 'simple'
+      };
+      localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+      this.showApp();
+    } catch (error) {
+      console.error('간편 로그인 에러:', error);
       alert('로그인 중 오류가 발생했습니다: ' + error.message);
     }
   },
@@ -520,13 +603,22 @@ const Auth = {
   showLoginForm() {
     document.getElementById('loginForm').style.display = 'flex';
     document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('simpleLoginForm').style.display = 'none';
     document.getElementById('authTitle').textContent = 'Login';
   },
 
   showRegisterForm() {
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('registerForm').style.display = 'flex';
+    document.getElementById('simpleLoginForm').style.display = 'none';
     document.getElementById('authTitle').textContent = 'Sign Up';
+  },
+
+  showSimpleLoginForm() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('simpleLoginForm').style.display = 'flex';
+    document.getElementById('authTitle').textContent = '간편 로그인';
   },
 
   // 현재 사용자 정보 가져오기
