@@ -328,7 +328,15 @@ const ShiftManager = {
       alert('근무가 입력되었습니다!');
     } catch (error) {
       console.error('저장 에러:', error);
-      alert('저장 중 오류가 발생했습니다.');
+      console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      
+      // Show detailed error to user
+      let errorMsg = '저장 중 오류가 발생했습니다.\n\n';
+      errorMsg += '에러 타입: ' + (error.name || 'Unknown') + '\n';
+      errorMsg += '에러 코드: ' + (error.code || 'N/A') + '\n';
+      errorMsg += '에러 메시지: ' + (error.message || error.toString());
+      
+      alert(errorMsg);
     }
   },
 
