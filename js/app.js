@@ -104,6 +104,14 @@ const App = {
     } else if (tabId === 'admin-panel') {
       console.log('🔧 Admin tab switched - reloading data');
       const user = Auth.getCurrentUser();
+      
+      // 권한 체크: Master 또는 Admin만 접근 가능
+      if (!user || (user.role !== 'master' && user.role !== 'admin')) {
+        alert('⚠️ 관리자 권한이 필요합니다.\nMaster 또는 Admin 계정으로만 접근할 수 있습니다.');
+        this.switchTab('shift-input'); // 첫 번째 탭으로 되돌아가기
+        return;
+      }
+      
       if (user && typeof AdminPanel !== 'undefined') {
         try {
           AdminPanel.loadPendingRequests();

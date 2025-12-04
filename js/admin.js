@@ -333,16 +333,18 @@ const AdminPanel = (function() {
                           member.role === 'admin' ? 'Admin' : 'Employee'}
                     </span>
                 </div>
-                ${currentUser.role === 'master' && member.id !== currentUser.id ? `
+                ${member.id !== currentUser.id && member.role !== 'master' ? `
                     <div class="member-actions">
-                        ${member.role !== 'admin' ? `
+                        ${currentUser.role === 'master' && member.role === 'employee' ? `
                             <button class="btn btn-secondary btn-sm" onclick="AdminPanel.promoteToAdmin('${member.id}')">
                                 <i class="fas fa-user-shield"></i> Promote to Admin
                             </button>
                         ` : ''}
-                        <button class="btn btn-danger btn-sm" onclick="AdminPanel.removeMember('${member.id}')">
-                            <i class="fas fa-user-times"></i> Remove
-                        </button>
+                        ${(currentUser.role === 'master') || (currentUser.role === 'admin' && member.role === 'employee') ? `
+                            <button class="btn btn-danger btn-sm" onclick="AdminPanel.removeMember('${member.id}')">
+                                <i class="fas fa-user-times"></i> Remove
+                            </button>
+                        ` : ''}
                     </div>
                 ` : ''}
             </div>
@@ -353,7 +355,26 @@ const AdminPanel = (function() {
      * Promote user to admin
      */
     async function promoteToAdmin(userId) {
-        if (!confirm('이 사용자를 관리자로 임명하시겠습니까?')) {
+        // 권한 체크: Master만 Admin을 임명할 수 있음
+        if (currentUser.role !== 'master') {
+            showError('⚠️ 권한이 없습니다. Master만 Admin을 임명할 수 있습니다.');
+            return;
+        }
+
+        const member = companyMembers.find(m => m.id === userId);
+        if (!member) return;
+
+        // 이미 Admin이거나 Master인 경우
+        if (member.role === 'admin') {
+            showError('⚠️ 이미 Admin 권한을 가지고 있습니다.');
+            return;
+        }
+        if (member.role === 'master') {
+            showError('⚠️ Master는 Admin으로 변경할 수 없습니다.');
+            return;
+        }
+
+        if (!confirm(`${member.username}님을 관리자로 임명하시겠습니까?`)) {
             return;
         }
 
@@ -384,6 +405,30 @@ const AdminPanel = (function() {
     async function removeMember(userId) {
         const member = companyMembers.find(m => m.id === userId);
         if (!member) return;
+
+        // 권한 체크
+        if (currentUser.role !== 'master' && currentUser.role !== 'admin') {
+            showError('⚠️ 권한이 없습니다. Master 또는 Admin만 멤버를 제거할 수 있습니다.');
+            return;
+        }
+
+        // Master는 제거할 수 없음
+        if (member.role === 'master') {
+            showError('⚠️ Master 계정은 제거할 수 없습니다.');
+            return;
+        }
+
+        // Admin은 다른 Admin을 제거할 수 없음 (Master만 가능)
+        if (member.role === 'admin' && currentUser.role !== 'master') {
+            showError('⚠️ Admin 계정은 Master만 제거할 수 있습니다.');
+            return;
+        }
+
+        // 자기 자신은 제거할 수 없음
+        if (userId === currentUser.id) {
+            showError('⚠️ 자기 자신은 제거할 수 없습니다. 회사 탈퇴는 프로필 설정에서 가능합니다.');
+            return;
+        }
 
         if (!confirm(`${member.username}님을 기업에서 제거하시겠습니까?`)) {
             return;
