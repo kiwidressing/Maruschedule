@@ -258,46 +258,55 @@ const Auth = {
 
   // Firebase 사용자 처리
   async handleFirebaseUser(firebaseUser) {
+    if (!db) {
+      console.error('Firestore is not initialized.');
+      alert('Firebase Firestore가 초기화되지 않았습니다.');
+      return;
+    }
+
     try {
-      // Firebase 사용자 정보로 데이터베이스 확인/생성
-      const response = await fetch(`tables/users?search=${encodeURIComponent(firebaseUser.email)}`);
-      const result = await response.json();
+      const usersRef = db.collection('users');
+      const snapshot = await usersRef.where('email', '==', firebaseUser.email).limit(1).get();
 
-      let dbUser = null;
+      let userDoc = null;
 
-      if (result.data && result.data.length > 0) {
-        // 기존 사용자
-        dbUser = result.data.find(u => u.email === firebaseUser.email);
-      }
-
-      if (!dbUser) {
+      if (snapshot.empty) {
         // 새 사용자 생성
         const newUser = {
-          username: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+          username: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Google User'),
           email: firebaseUser.email,
-          password: 'google_auth', // Google 로그인은 비밀번호 불필요
-          created_at: new Date().toISOString()
+          password: 'google_auth',
+          auth_provider: 'google',
+          photoURL: firebaseUser.photoURL || null,
+          created_at: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        const createResponse = await fetch('tables/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newUser)
-        });
+        const docRef = await usersRef.add(newUser);
+        userDoc = await docRef.get();
+      } else {
+        userDoc = snapshot.docs[0];
 
-        if (createResponse.ok) {
-          dbUser = await createResponse.json();
-        } else {
-          throw new Error('Failed to create user in database');
+        // 프로필 정보 업데이트 (필요 시)
+        const userData = userDoc.data();
+        const updates = {};
+        if (!userData.photoURL && firebaseUser.photoURL) {
+          updates.photoURL = firebaseUser.photoURL;
+        }
+        if (!userData.auth_provider) {
+          updates.auth_provider = 'google';
+        }
+        if (Object.keys(updates).length > 0) {
+          await usersRef.doc(userDoc.id).update(updates);
         }
       }
 
-      // 로그인 성공
+      const userData = userDoc.data();
+
       this.currentUser = {
-        id: dbUser.id,
-        username: dbUser.username,
-        email: dbUser.email,
-        photoURL: firebaseUser.photoURL || null
+        id: userDoc.id,
+        username: userData.username,
+        email: userData.email,
+        photoURL: userData.photoURL || firebaseUser.photoURL || null
       };
 
       localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
@@ -305,7 +314,7 @@ const Auth = {
 
     } catch (error) {
       console.error('Firebase user handling error:', error);
-      alert('An error occurred while processing your account.');
+      alert('Google 계정 정보를 처리하는 중 오류가 발생했습니다.');
     }
   },
 
