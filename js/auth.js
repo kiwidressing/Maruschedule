@@ -272,33 +272,57 @@ const Auth = {
     }
 
     try {
-      console.log('🔍 Handling Firebase user:', firebaseUser.email);
+      console.log('🔍 Handling Firebase user:', firebaseUser.email, firebaseUser.uid);
 
       const usersRef = db.collection('users');
-      const snapshot = await usersRef.where('email', '==', firebaseUser.email).limit(1).get();
-
       let userDoc = null;
 
-      if (snapshot.empty) {
+      // 1) Try to find by firebase_uid first
+      if (firebaseUser.uid) {
+        const byUid = await usersRef.where('firebase_uid', '==', firebaseUser.uid).limit(1).get();
+        if (!byUid.empty) {
+          userDoc = byUid.docs[0];
+          console.log('ℹ️ Matched Firestore user by firebase_uid:', userDoc.id);
+        }
+      }
+
+      // 2) Fallback to email lookup
+      if (!userDoc) {
+        const byEmail = await usersRef.where('email', '==', firebaseUser.email).limit(1).get();
+        if (!byEmail.empty) {
+          userDoc = byEmail.docs[0];
+          console.log('ℹ️ Matched Firestore user by email:', userDoc.id);
+        }
+      }
+
+      if (!userDoc) {
         console.log('🆕 Creating new Firestore user for Google account');
         const newUser = {
           username: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Google User'),
           email: firebaseUser.email,
           password: 'google_auth',
           auth_provider: 'google',
+          firebase_uid: firebaseUser.uid || null,
           photoURL: firebaseUser.photoURL || null,
           created_at: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        const docRef = await usersRef.add(newUser);
+        let docRef;
+        if (firebaseUser.uid) {
+          // Save with deterministic ID for easier lookups later
+          docRef = usersRef.doc(firebaseUser.uid);
+          await docRef.set(newUser, { merge: true });
+        } else {
+          docRef = await usersRef.add(newUser);
+        }
         userDoc = await docRef.get();
       } else {
-        userDoc = snapshot.docs[0];
-        console.log('ℹ️ Existing Firestore user found:', userDoc.id);
-
-        // 프로필 정보 업데이트 (필요 시)
+        // ensure firebase_uid stored
         const userData = userDoc.data();
         const updates = {};
+        if (!userData.firebase_uid && firebaseUser.uid) {
+          updates.firebase_uid = firebaseUser.uid;
+        }
         if (!userData.photoURL && firebaseUser.photoURL) {
           updates.photoURL = firebaseUser.photoURL;
         }
@@ -306,26 +330,30 @@ const Auth = {
           updates.auth_provider = 'google';
         }
         if (Object.keys(updates).length > 0) {
+          console.log('ℹ️ Updating Firestore user with:', updates);
           await usersRef.doc(userDoc.id).update(updates);
+          userDoc = await usersRef.doc(userDoc.id).get();
         }
       }
 
       const userData = userDoc.data();
+      console.log('✅ Firestore user data:', userData);
 
       this.currentUser = {
         id: userDoc.id,
         username: userData.username,
         email: userData.email,
-        photoURL: userData.photoURL || firebaseUser.photoURL || null
+        photoURL: userData.photoURL || firebaseUser.photoURL || null,
+        firebaseUid: userData.firebase_uid || firebaseUser.uid || null
       };
 
       localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-      console.log('✅ Google user logged in:', this.currentUser);
+      console.log('✅ Google user logged in & stored in localStorage');
       this.showApp();
 
     } catch (error) {
       console.error('Firebase user handling error:', error);
-      alert('Google 계정 정보를 처리하는 중 오류가 발생했습니다.');
+      alert('Google 계정 정보를 처리하는 중 오류가 발생했습니다. 콘솔 로그를 확인해주세요.');
     }
   },
 
