@@ -4,6 +4,9 @@ const App = {
 
   // 초기화
   init() {
+    console.log('🚀 App.init() 시작');
+    alert('🚀 App.init() 시작 - JavaScript가 실행되고 있습니다!');
+    
     this.setupTabNavigation();
     this.setupExportButtons();
     this.setupAllShiftsTab();
@@ -58,6 +61,8 @@ const App = {
 
   // 탭 전환
   switchTab(tabId) {
+    console.log('🔧 switchTab called with:', tabId);
+    
     // 모든 탭 버튼 비활성화
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.classList.remove('active');
@@ -66,14 +71,32 @@ const App = {
     // 모든 탭 컨텐츠 숨기기
     document.querySelectorAll('.tab-content').forEach(content => {
       content.classList.remove('active');
+      console.log('🔧 Hiding tab:', content.id);
     });
 
     // 선택된 탭 활성화
     const selectedBtn = document.querySelector(`[data-tab="${tabId}"]`);
     const selectedContent = document.getElementById(tabId);
 
-    if (selectedBtn) selectedBtn.classList.add('active');
-    if (selectedContent) selectedContent.classList.add('active');
+    console.log('🔧 selectedBtn:', selectedBtn);
+    console.log('🔧 selectedContent:', selectedContent);
+
+    if (selectedBtn) {
+      selectedBtn.classList.add('active');
+      console.log('✅ Tab button activated');
+    } else {
+      console.error('❌ Tab button not found!');
+      alert(`탭 버튼을 찾을 수 없습니다: ${tabId}`);
+    }
+    
+    if (selectedContent) {
+      selectedContent.classList.add('active');
+      selectedContent.style.display = 'block'; // Force display
+      console.log('✅ Tab content activated and forced visible');
+    } else {
+      console.error('❌ Tab content not found!');
+      alert(`탭 내용을 찾을 수 없습니다: ${tabId}`);
+    }
 
     this.currentTab = tabId;
 
