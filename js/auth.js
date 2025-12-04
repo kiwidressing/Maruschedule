@@ -2,6 +2,24 @@
 const Auth = {
   currentUser: null,
 
+  // 화면에 로그 표시
+  showDebugLog(message, type = 'info') {
+    const logDiv = document.getElementById('authDebugLog');
+    const logContent = document.getElementById('authDebugLogContent');
+    
+    if (logDiv && logContent) {
+      logDiv.style.display = 'block';
+      
+      const timestamp = new Date().toLocaleTimeString();
+      const color = type === 'error' ? '#f00' : type === 'success' ? '#0f0' : type === 'warning' ? '#ff0' : '#0ff';
+      
+      logContent.innerHTML += `<div style="color: ${color}; margin: 3px 0;">[${timestamp}] ${message}</div>`;
+      logContent.scrollTop = logContent.scrollHeight;
+    }
+    
+    console.log(message);
+  },
+
   // 초기화
   init() {
     this.companyCache = {};
@@ -114,30 +132,29 @@ const Auth = {
 
     // Firebase Auth State 변경 감지
     if (auth) {
-      console.log('🔧 Setting up Firebase auth listeners...');
+      this.showDebugLog('🔧 Firebase auth listeners 설정 중...', 'info');
       
       // 리다이렉트 결과 확인
       auth.getRedirectResult()
         .then((result) => {
-          console.log('🔄 getRedirectResult called');
+          this.showDebugLog('🔄 getRedirectResult 호출됨', 'info');
           if (result && result.user) {
-            console.log('✅ Redirect result user detected:', result.user.email);
-            console.log('📧 User email:', result.user.email);
-            console.log('🆔 User UID:', result.user.uid);
-            console.log('📸 User photo:', result.user.photoURL);
+            this.showDebugLog(`✅ 리다이렉트 결과: ${result.user.email}`, 'success');
+            this.showDebugLog(`📧 이메일: ${result.user.email}`, 'info');
+            this.showDebugLog(`🆔 UID: ${result.user.uid}`, 'info');
             
             // 즉시 처리
             this.handleFirebaseUser(result.user).catch((err) => {
-              console.error('❌ Error in handleFirebaseUser:', err);
+              this.showDebugLog(`❌ handleFirebaseUser 오류: ${err.message}`, 'error');
               alert(`Google 로그인 처리 중 오류가 발생했습니다:\n\n${err.message}\n\n다시 시도해주세요.`);
               this.showAuthModal();
             });
           } else {
-            console.log('ℹ️ No redirect result user');
+            this.showDebugLog('ℹ️ 리다이렉트 결과 없음 (정상)', 'info');
           }
         })
         .catch((error) => {
-          console.error('❌ Redirect result error:', error);
+          this.showDebugLog(`❌ 리다이렉트 오류: ${error.message}`, 'error');
           if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/popup-blocked') {
             alert(`Google 로그인 리디렉트 오류:\n\n${error.message}`);
           }
@@ -544,25 +561,27 @@ const Auth = {
 
   // Google 로그인 처리
   async handleGoogleLogin() {
+    this.showDebugLog('🔑 Google 로그인 시작...', 'info');
+    
     if (typeof auth === 'undefined' || !auth) {
+      this.showDebugLog('❌ Firebase 설정 안 됨', 'error');
       alert('Firebase is not configured. Please check firebase-config.js');
       return;
     }
 
     // Firebase 초기화 확인
     if (typeof firebase === 'undefined') {
+      this.showDebugLog('❌ Firebase SDK 로드 안 됨', 'error');
       alert('Firebase SDK not loaded. Please refresh the page.');
       return;
     }
 
-    console.log('🔑 Firebase Config Check:', {
-      apiKey: firebaseConfig.apiKey ? '✅ Set' : '❌ Missing',
-      authDomain: firebaseConfig.authDomain,
-      projectId: firebaseConfig.projectId
-    });
+    this.showDebugLog(`✅ Firebase 설정 확인 완료`, 'success');
+    this.showDebugLog(`📋 Project: ${firebaseConfig.projectId}`, 'info');
 
     try {
-      console.log('🚀 Starting Google Sign-in with Redirect...');
+      this.showDebugLog('🚀 Google 리다이렉트 시작...', 'info');
+      this.showDebugLog('⏳ Google 계정 선택 화면으로 이동합니다...', 'warning');
 
       await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
       // 모바일 호환성을 위해 리다이렉트 방식 사용
@@ -570,17 +589,18 @@ const Auth = {
       // 리다이렉트 후 돌아오면 onAuthStateChanged에서 처리됨
       
     } catch (error) {
-      console.error('❌ Google login error:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
+      this.showDebugLog(`❌ Google 로그인 오류: ${error.message}`, 'error');
+      this.showDebugLog(`❌ 오류 코드: ${error.code}`, 'error');
       
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/popup-blocked') {
         // 사용자가 팝업을 닫거나 차단됨 - 에러 표시 안 함
+        this.showDebugLog('ℹ️ 사용자가 취소함', 'warning');
         return;
       }
       
       // API Key 관련 에러 상세 정보
       if (error.code && error.code.includes('api-key')) {
+        this.showDebugLog('❌ API Key 오류 발생', 'error');
         alert('Firebase API Key Error. This may be due to:\n\n1. API Key restrictions in Google Cloud Console\n2. Identity Platform API not enabled\n3. Firebase configuration issue\n\nPlease check Firebase Console settings.');
       } else {
         alert('Google login failed: ' + error.message);
@@ -591,37 +611,45 @@ const Auth = {
   // Firebase 사용자 처리
   async handleFirebaseUser(firebaseUser) {
     if (!db) {
-      console.error('Firestore is not initialized.');
+      this.showDebugLog('❌ Firestore 초기화되지 않음', 'error');
       alert('Firebase Firestore가 초기화되지 않았습니다.');
       return;
     }
 
     try {
-      console.log('🔍 Handling Firebase user:', firebaseUser.email, firebaseUser.uid);
+      this.showDebugLog(`🔍 Firebase 사용자 처리 중: ${firebaseUser.email}`, 'info');
 
       const usersRef = db.collection('users');
       let userDoc = null;
 
+      this.showDebugLog('🔍 Firestore에서 사용자 검색 중...', 'info');
+
       // 1) Try to find by firebase_uid first
       if (firebaseUser.uid) {
+        this.showDebugLog(`🔍 UID로 검색: ${firebaseUser.uid}`, 'info');
         const byUid = await usersRef.where('firebase_uid', '==', firebaseUser.uid).limit(1).get();
         if (!byUid.empty) {
           userDoc = byUid.docs[0];
-          console.log('ℹ️ Matched Firestore user by firebase_uid:', userDoc.id);
+          this.showDebugLog(`✅ UID로 사용자 찾음: ${userDoc.id}`, 'success');
+        } else {
+          this.showDebugLog('ℹ️ UID로 사용자 못 찾음', 'warning');
         }
       }
 
       // 2) Fallback to email lookup
       if (!userDoc && firebaseUser.email) {
+        this.showDebugLog(`🔍 이메일로 검색: ${firebaseUser.email}`, 'info');
         const byEmail = await usersRef.where('email', '==', firebaseUser.email.toLowerCase()).limit(1).get();
         if (!byEmail.empty) {
           userDoc = byEmail.docs[0];
-          console.log('ℹ️ Matched Firestore user by email:', userDoc.id);
+          this.showDebugLog(`✅ 이메일로 사용자 찾음: ${userDoc.id}`, 'success');
+        } else {
+          this.showDebugLog('ℹ️ 이메일로 사용자 못 찾음', 'warning');
         }
       }
 
       if (!userDoc) {
-        console.log('🆕 Creating new Firestore user for Google account (personal account)');
+        this.showDebugLog('🆕 새 개인 계정 생성 중...', 'info');
         const newUser = {
           username: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Google User'),
           email: firebaseUser.email ? firebaseUser.email.toLowerCase() : '',
@@ -635,12 +663,15 @@ const Auth = {
           created_at: firebase.firestore.FieldValue.serverTimestamp()
         };
 
+        this.showDebugLog('💾 Firestore에 사용자 저장 중...', 'info');
         let docRef;
         if (firebaseUser.uid) {
           docRef = usersRef.doc(firebaseUser.uid);
           await docRef.set(newUser, { merge: true });
+          this.showDebugLog(`✅ 사용자 저장 완료 (UID 문서)`, 'success');
         } else {
           docRef = await usersRef.add(newUser);
+          this.showDebugLog(`✅ 사용자 저장 완료 (자동 ID)`, 'success');
         }
         userDoc = await docRef.get();
       } else {
@@ -664,11 +695,13 @@ const Auth = {
       }
 
       const userData = userDoc.data();
-      console.log('✅ Firestore user data:', userData);
+      this.showDebugLog(`✅ Firestore 사용자 데이터 로드 완료`, 'success');
+      this.showDebugLog(`📋 역할: ${userData.role || 'N/A'}`, 'info');
+      this.showDebugLog(`📋 상태: ${userData.status || 'N/A'}`, 'info');
 
       // 개인 계정 (role: 'personal')은 company_id 체크 생략
       if (userData.role === 'personal') {
-        console.log('✅ Personal account detected - no company check needed');
+        this.showDebugLog('✅ 개인 계정 확인됨 - 회사 체크 생략', 'success');
         
         this.currentUser = {
           id: userDoc.id,
@@ -685,7 +718,8 @@ const Auth = {
         };
 
         localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-        console.log('✅ Personal Google user logged in & stored in localStorage');
+        this.showDebugLog('✅ localStorage에 저장 완료', 'success');
+        this.showDebugLog('🚀 앱 화면으로 전환 중...', 'success');
         this.showApp();
         return;
       }
@@ -728,9 +762,9 @@ const Auth = {
       this.showApp();
 
     } catch (error) {
-      console.error('❌ Firebase user handling error:', error);
-      console.error('Error stack:', error.stack);
-      alert(`Google 계정 정보 처리 중 오류 발생:\n\n${error.message}\n\n콘솔 로그를 확인해주세요.`);
+      this.showDebugLog(`❌ 오류 발생: ${error.message}`, 'error');
+      this.showDebugLog(`❌ 오류 코드: ${error.code || 'N/A'}`, 'error');
+      alert(`Google 계정 정보 처리 중 오류 발생:\n\n${error.message}\n\n화면 상단의 디버그 로그를 확인해주세요.`);
       
       // 오류 발생 시 로그아웃하고 로그인 화면으로
       this.currentUser = null;

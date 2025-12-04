@@ -28,6 +28,16 @@
       <div class="modal-header">
         <h2 id="authTitle">Login</h2>
       </div>
+      
+      <!-- Debug Log Display -->
+      <div id="authDebugLog" style="display: none; background: #000; color: #0f0; padding: 15px; margin: 10px; border-radius: 8px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 11px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong style="color: #fff;">🐛 디버그 로그</strong>
+          <button onclick="document.getElementById('authDebugLog').style.display='none'" style="background: #f00; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">닫기</button>
+        </div>
+        <div id="authDebugLogContent"></div>
+      </div>
+      
       <div class="modal-body">
         <!-- Login Form -->
         <form id="loginForm" class="auth-form">
