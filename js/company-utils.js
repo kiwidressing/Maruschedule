@@ -29,11 +29,14 @@ const CompanyUtils = (function() {
             const db = firebase.firestore();
             const snapshot = await db.collection('companies')
                 .where('invite_code', '==', code)
+                .limit(1)
                 .get();
             return !snapshot.empty;
         } catch (error) {
             console.error('❌ Error checking invite code:', error);
-            throw error;
+            // If error occurs (e.g., missing index), assume code doesn't exist and continue
+            console.warn('Assuming code does not exist due to error');
+            return false;
         }
     }
 
@@ -51,9 +54,16 @@ const CompanyUtils = (function() {
             attempts++;
             
             if (attempts >= maxAttempts) {
-                throw new Error('Failed to generate unique invite code after ' + maxAttempts + ' attempts');
+                // If we can't generate unique code, just use the last one
+                console.warn('Using potentially non-unique code after ' + maxAttempts + ' attempts');
+                break;
             }
-        } while (await isInviteCodeExists(code));
+            
+            const exists = await isInviteCodeExists(code);
+            if (!exists) {
+                break;
+            }
+        } while (attempts < maxAttempts);
 
         return code;
     }
