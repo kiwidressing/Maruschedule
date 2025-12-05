@@ -130,10 +130,13 @@ const Database = {
         throw new Error('Firestore not initialized');
       }
 
-      // Add company_id from current user
+      // Add company_id from current user (optional for personal accounts)
       const currentUser = Auth.getCurrentUser();
-      if (currentUser && currentUser.companyId) {
-        archiveData.company_id = currentUser.companyId;
+      if (currentUser) {
+        // 개인 계정이면 company_id를 null로 설정
+        archiveData.company_id = currentUser.companyId || null;
+        // 계정 타입 추가
+        archiveData.account_type = currentUser.role || 'personal';
       }
 
       const docRef = await db.collection('archives').add({
