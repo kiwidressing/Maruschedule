@@ -23,7 +23,7 @@ const ExportManager = {
     
     // 헤더
     data.push([englishLabel]);
-    data.push([`Employee: ${user.username}`]);
+    data.push([`Employee: ${user.name || user.username || user.email || 'Unknown'}`]);
     data.push([]);
     
     // 테이블 헤더
@@ -106,7 +106,7 @@ const ExportManager = {
     doc.text(englishLabel, 105, 20, { align: 'center' });
     
     doc.setFontSize(12);
-    doc.text(`Employee: ${user.username}`, 105, 30, { align: 'center' });
+    doc.text(`Employee: ${user.name || user.username || user.email || 'Unknown'}`, 105, 30, { align: 'center' });
 
     // 테이블 데이터 준비
     const dayNamesEn = {
@@ -191,7 +191,7 @@ const ExportManager = {
         // 사용자 정보 가져오기
         const user = await Database.getUserById(shift.user_id);
         userShifts[shift.user_id] = {
-          username: user?.username || 'Unknown',
+          username: user?.username || user?.name || 'Unknown',
           shifts: {}
         };
       }
@@ -201,7 +201,7 @@ const ExportManager = {
     // 워크북 생성
     const wb = XLSX.utils.book_new();
     
-    // 하나의 시트에 가로로 정리
+    // 하나의 시트에 세로로 정리 (직원별로 블록 구성)
     const data = [];
     
     // 제목
@@ -210,66 +210,31 @@ const ExportManager = {
     data.push([label]);
     data.push([]);
     
-    // 헤더 행 1: 직원 이름
-    const header1 = ['Day'];
-    const header2 = [''];
-    
-    const userList = Object.entries(userShifts);
-    userList.forEach(([userId, userData]) => {
-      // 각 직원에 대해 LN, DN, Total 3개 열
-      header1.push(userData.username, '', '');
-      header2.push('LN', 'DN', 'Total');
-    });
-    
-    data.push(header1);
-    data.push(header2);
-    
-    // 각 요일 데이터
+    // 요일 이름
     const dayNames = {
-      mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu',
-      fri: 'Fri', sat: 'Sat', sun: 'Sun'
+      mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
+      fri: 'Friday', sat: 'Saturday', sun: 'Sunday'
     };
     
-    ShiftManager.dayKeys.forEach(key => {
-      const row = [dayNames[key]];
+    // 각 직원별로 블록 생성
+    const userList = Object.entries(userShifts);
+    
+    userList.forEach(([userId, userData], index) => {
+      // 직원 이름 헤더 (강조)
+      data.push([`Employee: ${userData.username}`]);
+      data.push([]);
       
-      userList.forEach(([userId, userData]) => {
+      // 테이블 헤더
+      data.push(['Day', 'LN Start', 'LN End', 'LN Hours', 'DN Start', 'DN End', 'DN Hours', 'Daily Total']);
+      
+      let weekdayTotal = 0, satTotal = 0, sunTotal = 0;
+      
+      // 각 요일 데이터
+      ShiftManager.dayKeys.forEach(key => {
         const shift = userData.shifts[key] || {};
         const lnH = shift.ln_hours || 0;
         const dnH = shift.dn_hours || 0;
         const total = lnH + dnH;
-        
-        // LN 시간 (start-end)
-        const lnText = shift.ln_start && shift.ln_end 
-          ? `${shift.ln_start}-${shift.ln_end} (${lnH}h)`
-          : lnH > 0 ? `${lnH}h` : '';
-        
-        // DN 시간 (start-end)
-        const dnText = shift.dn_start && shift.dn_end
-          ? `${shift.dn_start}-${shift.dn_end} (${dnH}h)`
-          : dnH > 0 ? `${dnH}h` : '';
-        
-        row.push(lnText, dnText, total > 0 ? `${total}h` : '');
-      });
-      
-      data.push(row);
-    });
-    
-    // 합계 행
-    data.push([]);
-    
-    // 평일 합계
-    const weekdayRow = ['Weekday Total'];
-    const saturdayRow = ['Saturday Total'];
-    const sundayRow = ['Sunday Total'];
-    const totalRow = ['Total Hours'];
-    
-    userList.forEach(([userId, userData]) => {
-      let weekdayTotal = 0, satTotal = 0, sunTotal = 0;
-      
-      ShiftManager.dayKeys.forEach(key => {
-        const shift = userData.shifts[key] || {};
-        const total = (shift.ln_hours || 0) + (shift.dn_hours || 0);
         
         if (['mon', 'tue', 'wed', 'thu', 'fri'].includes(key)) {
           weekdayTotal += total;
@@ -278,38 +243,48 @@ const ExportManager = {
         } else if (key === 'sun') {
           sunTotal += total;
         }
+        
+        data.push([
+          dayNames[key],
+          shift.ln_start || '-',
+          shift.ln_end || '-',
+          lnH > 0 ? `${lnH}h` : '-',
+          shift.dn_start || '-',
+          shift.dn_end || '-',
+          dnH > 0 ? `${dnH}h` : '-',
+          total > 0 ? `${total}h` : '-'
+        ]);
       });
       
-      weekdayRow.push('', '', `${weekdayTotal.toFixed(2)}h`);
-      saturdayRow.push('', '', `${satTotal.toFixed(2)}h`);
-      sundayRow.push('', '', `${sunTotal.toFixed(2)}h`);
-      totalRow.push('', '', `${(weekdayTotal + satTotal + sunTotal).toFixed(2)}h`);
+      // 합계 행
+      data.push([]);
+      data.push(['Weekday Total', '', '', '', '', '', '', `${weekdayTotal.toFixed(2)}h`]);
+      data.push(['Saturday Total', '', '', '', '', '', '', `${satTotal.toFixed(2)}h`]);
+      data.push(['Sunday Total', '', '', '', '', '', '', `${sunTotal.toFixed(2)}h`]);
+      data.push(['Total Hours', '', '', '', '', '', '', `${(weekdayTotal + satTotal + sunTotal).toFixed(2)}h`]);
+      
+      // 직원 간 구분선 (마지막 직원 제외)
+      if (index < userList.length - 1) {
+        data.push([]);
+        data.push(['─'.repeat(80)]);
+        data.push([]);
+      }
     });
-    
-    data.push(weekdayRow);
-    data.push(saturdayRow);
-    data.push(sundayRow);
-    data.push(totalRow);
     
     // 워크시트 생성
     const ws = XLSX.utils.aoa_to_sheet(data);
     
-    // 열 너비 설정 (Day + 각 직원당 3열)
-    const cols = [{ wch: 15 }];
-    userList.forEach(() => {
-      cols.push({ wch: 18 }, { wch: 18 }, { wch: 10 });
-    });
-    ws['!cols'] = cols;
-    
-    // 머지: 직원 이름 (3열 병합)
-    const merges = [];
-    for (let i = 0; i < userList.length; i++) {
-      merges.push({
-        s: { r: 2, c: 1 + i * 3 },
-        e: { r: 2, c: 3 + i * 3 }
-      });
-    }
-    ws['!merges'] = merges;
+    // 열 너비 설정
+    ws['!cols'] = [
+      { wch: 15 }, // Day
+      { wch: 10 }, // LN Start
+      { wch: 10 }, // LN End
+      { wch: 10 }, // LN Hours
+      { wch: 10 }, // DN Start
+      { wch: 10 }, // DN End
+      { wch: 10 }, // DN Hours
+      { wch: 12 }  // Daily Total
+    ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'All Staff Shifts');
 
@@ -330,7 +305,7 @@ const ExportManager = {
       if (!userShifts[shift.user_id]) {
         const user = await Database.getUserById(shift.user_id);
         userShifts[shift.user_id] = {
-          username: user?.username || '알 수 없음',
+          username: user?.name || user?.username || user?.email || 'Unknown',
           shifts: {}
         };
       }

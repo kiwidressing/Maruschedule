@@ -384,7 +384,7 @@ const ShiftManager = {
     try {
       const archiveData = {
         user_id: user.id,
-        username: user.username,
+        username: user.name || user.username || user.email || 'Unknown',
         week_start: this.currentWeekData.weekStart,
         label: label,
         summary: summaryString,
@@ -396,7 +396,7 @@ const ShiftManager = {
       };
 
       await Database.saveArchive(archiveData);
-      alert('이번 주 근무표가 아카이브에 저장되었습니다!');
+      alert('Schedule saved to archive successfully!');
       
       // 아카이브 탭 새로고침
       if (window.App) {
