@@ -134,9 +134,11 @@ const Auth = {
     if (auth) {
       this.showDebugLog('🔧 Firebase auth listeners 설정 중...', 'info');
       
-      // 리다이렉트 결과 확인
+      let redirectProcessed = false;
+      
+      // 리다이렉트 결과 확인 (먼저 처리하고 완료될 때까지 기다림)
       auth.getRedirectResult()
-        .then((result) => {
+        .then(async (result) => {
           this.showDebugLog('🔄 getRedirectResult 호출됨', 'info');
           if (result) {
             this.showDebugLog(`📦 결과 객체: ${JSON.stringify({
@@ -147,55 +149,65 @@ const Auth = {
             })}`, 'info');
           }
           if (result && result.user) {
+            redirectProcessed = true;
             this.showDebugLog(`✅ 리다이렉트 결과: ${result.user.email}`, 'success');
             this.showDebugLog(`📧 이메일: ${result.user.email}`, 'info');
             this.showDebugLog(`🆔 UID: ${result.user.uid}`, 'info');
             
-            // 즉시 처리
-            this.handleFirebaseUser(result.user).catch((err) => {
-              this.showDebugLog(`❌ handleFirebaseUser 오류: ${err.message}`, 'error');
-              alert(`Google 로그인 처리 중 오류가 발생했습니다:\n\n${err.message}\n\n다시 시도해주세요.`);
-              this.showAuthModal();
-            });
+            // 즉시 처리하고 완료될 때까지 기다림
+            await this.handleFirebaseUser(result.user);
           } else {
-            this.showDebugLog('ℹ️ 리다이렉트 결과 없음 (정상)', 'warning');
+            this.showDebugLog('ℹ️ 리다이렉트 결과 없음 (정상)', 'info');
           }
+          
+          // 리다이렉트 처리가 완전히 끝난 후에만 authStateChanged 설정
+          this.showDebugLog('✅ 리다이렉트 처리 완료, authStateChanged 리스너 등록', 'info');
+          setupAuthStateListener();
         })
         .catch((error) => {
           this.showDebugLog(`❌ 리다이렉트 오류: ${error.message}`, 'error');
           if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/popup-blocked') {
             alert(`Google 로그인 리디렉트 오류:\n\n${error.message}`);
           }
+          // 오류가 나도 authStateChanged는 설정해야 함
+          setupAuthStateListener();
         });
 
-      // 인증 상태 변경 감지 (리디렉트 후 한 번만 실행되도록)
-      let authStateProcessed = false;
-      auth.onAuthStateChanged((user) => {
-        this.showDebugLog(`👤 authStateChanged 발생 (user ${user ? '존재' : '없음'})`, user ? 'info' : 'warning');
-        if (user) {
-          this.showDebugLog(`   • email: ${user.email}`, 'info');
-          this.showDebugLog(`   • uid: ${user.uid}`, 'info');
-        }
-        this.showDebugLog(`   • currentUser 캐시 있음? ${!!this.currentUser}`, 'info');
-        this.showDebugLog(`   • authStateProcessed? ${authStateProcessed}`, 'info');
-        
-        // 이미 처리했거나 currentUser가 있으면 무시
-        if (authStateProcessed || this.currentUser) {
-          this.showDebugLog('⏭️ authStateChanged 처리 생략 (이미 처리됨)', 'warning');
-          return;
-        }
-        
-        if (user) {
-          authStateProcessed = true;
-          this.showDebugLog(`🔄 authStateChanged 사용자 처리 시작: ${user.email}`, 'info');
-          this.handleFirebaseUser(user).catch((err) => {
-            this.showDebugLog(`❌ authState handler 오류: ${err.message}`, 'error');
-            authStateProcessed = false; // 실패 시 다시 시도 가능하도록
-          });
-        } else {
-          this.showDebugLog('ℹ️ authStateChanged: user 없음', 'warning');
-        }
-      });
+      // authStateChanged 리스너 설정 함수
+      const setupAuthStateListener = () => {
+        auth.onAuthStateChanged(async (user) => {
+          this.showDebugLog(`👤 authStateChanged 발생 (user ${user ? '존재' : '없음'})`, user ? 'info' : 'warning');
+          
+          // redirectProcessed가 이미 true면 무시 (redirect로 이미 처리됨)
+          if (redirectProcessed) {
+            this.showDebugLog('⏭️ redirect로 이미 처리됨, authState 건너뜀', 'warning');
+            return;
+          }
+          
+          if (user) {
+            this.showDebugLog(`   • email: ${user.email}`, 'info');
+            this.showDebugLog(`   • uid: ${user.uid}`, 'info');
+          }
+          this.showDebugLog(`   • currentUser 캐시 있음? ${!!this.currentUser}`, 'info');
+          
+          // 이미 currentUser가 있으면 무시
+          if (this.currentUser) {
+            this.showDebugLog('⏭️ currentUser 이미 존재, 건너뜀', 'warning');
+            return;
+          }
+          
+          if (user) {
+            this.showDebugLog(`🔄 authStateChanged 사용자 처리 시작: ${user.email}`, 'info');
+            try {
+              await this.handleFirebaseUser(user);
+            } catch (err) {
+              this.showDebugLog(`❌ authState handler 오류: ${err.message}`, 'error');
+            }
+          } else {
+            this.showDebugLog('ℹ️ authStateChanged: user 없음', 'warning');
+          }
+        });
+      };
     }
   },
 
