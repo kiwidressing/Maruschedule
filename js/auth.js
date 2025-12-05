@@ -134,80 +134,36 @@ const Auth = {
     if (auth) {
       this.showDebugLog('🔧 Firebase auth listeners 설정 중...', 'info');
       
-      let redirectProcessed = false;
+      // Popup 방식 사용으로 인해 getRedirectResult 불필요
+      // authStateChanged만 설정하여 세션 복원 처리
+      auth.onAuthStateChanged(async (user) => {
+        this.showDebugLog(`👤 authStateChanged 발생 (user ${user ? '존재' : '없음'})`, user ? 'info' : 'warning');
+        
+        if (user) {
+          this.showDebugLog(`   • email: ${user.email}`, 'info');
+          this.showDebugLog(`   • uid: ${user.uid}`, 'info');
+        }
+        this.showDebugLog(`   • currentUser 캐시 있음? ${!!this.currentUser}`, 'info');
+        
+        // 이미 currentUser가 있으면 무시 (중복 처리 방지)
+        if (this.currentUser) {
+          this.showDebugLog('⏭️ currentUser 이미 존재, 건너뜀', 'warning');
+          return;
+        }
+        
+        if (user) {
+          this.showDebugLog(`🔄 세션 복원 중: ${user.email}`, 'info');
+          try {
+            await this.handleFirebaseUser(user);
+          } catch (err) {
+            this.showDebugLog(`❌ 세션 복원 오류: ${err.message}`, 'error');
+          }
+        } else {
+          this.showDebugLog('ℹ️ 로그인된 사용자 없음', 'info');
+        }
+      });
       
-      // 리다이렉트 결과 확인 (먼저 처리하고 완료될 때까지 기다림)
-      auth.getRedirectResult()
-        .then(async (result) => {
-          this.showDebugLog('🔄 getRedirectResult 호출됨', 'info');
-          if (result) {
-            this.showDebugLog(`📦 결과 객체: ${JSON.stringify({
-              hasUser: !!result.user,
-              operationType: result.operationType || null,
-              isNewUser: result.additionalUserInfo ? result.additionalUserInfo.isNewUser : null,
-              providerId: result.credential ? result.credential.providerId : null,
-            })}`, 'info');
-          }
-          if (result && result.user) {
-            redirectProcessed = true;
-            this.showDebugLog(`✅ 리다이렉트 결과: ${result.user.email}`, 'success');
-            this.showDebugLog(`📧 이메일: ${result.user.email}`, 'info');
-            this.showDebugLog(`🆔 UID: ${result.user.uid}`, 'info');
-            
-            // 즉시 처리하고 완료될 때까지 기다림
-            await this.handleFirebaseUser(result.user);
-          } else {
-            this.showDebugLog('ℹ️ 리다이렉트 결과 없음 (정상)', 'info');
-          }
-          
-          // 리다이렉트 처리가 완전히 끝난 후에만 authStateChanged 설정
-          this.showDebugLog('✅ 리다이렉트 처리 완료, authStateChanged 리스너 등록', 'info');
-          setupAuthStateListener();
-        })
-        .catch((error) => {
-          this.showDebugLog(`❌ 리다이렉트 오류: ${error.message}`, 'error');
-          if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/popup-blocked') {
-            alert(`Google 로그인 리디렉트 오류:\n\n${error.message}`);
-          }
-          // 오류가 나도 authStateChanged는 설정해야 함
-          setupAuthStateListener();
-        });
-
-      // authStateChanged 리스너 설정 함수
-      const setupAuthStateListener = () => {
-        auth.onAuthStateChanged(async (user) => {
-          this.showDebugLog(`👤 authStateChanged 발생 (user ${user ? '존재' : '없음'})`, user ? 'info' : 'warning');
-          
-          // redirectProcessed가 이미 true면 무시 (redirect로 이미 처리됨)
-          if (redirectProcessed) {
-            this.showDebugLog('⏭️ redirect로 이미 처리됨, authState 건너뜀', 'warning');
-            return;
-          }
-          
-          if (user) {
-            this.showDebugLog(`   • email: ${user.email}`, 'info');
-            this.showDebugLog(`   • uid: ${user.uid}`, 'info');
-          }
-          this.showDebugLog(`   • currentUser 캐시 있음? ${!!this.currentUser}`, 'info');
-          
-          // 이미 currentUser가 있으면 무시
-          if (this.currentUser) {
-            this.showDebugLog('⏭️ currentUser 이미 존재, 건너뜀', 'warning');
-            return;
-          }
-          
-          if (user) {
-            this.showDebugLog(`🔄 authStateChanged 사용자 처리 시작: ${user.email}`, 'info');
-            try {
-              await this.handleFirebaseUser(user);
-            } catch (err) {
-              this.showDebugLog(`❌ authState handler 오류: ${err.message}`, 'error');
-            }
-          } else {
-            this.showDebugLog('ℹ️ authStateChanged: user 없음', 'warning');
-          }
-        });
-      };
+      this.showDebugLog('✅ Auth 리스너 설정 완료', 'success');
     }
   },
 
@@ -604,13 +560,19 @@ const Auth = {
     this.showDebugLog(`📋 Project: ${firebaseConfig.projectId}`, 'info');
 
     try {
-      this.showDebugLog('🚀 Google 리다이렉트 시작...', 'info');
-      this.showDebugLog('⏳ Google 계정 선택 화면으로 이동합니다...', 'warning');
+      this.showDebugLog('🚀 Google 팝업 로그인 시작...', 'info');
+      this.showDebugLog('⏳ Google 계정 선택 팝업이 열립니다...', 'warning');
 
       await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-      // 모바일 호환성을 위해 리다이렉트 방식 사용
-      await auth.signInWithRedirect(googleProvider);
-      // 리다이렉트 후 돌아오면 onAuthStateChanged에서 처리됨
+      
+      // Popup 방식 사용 (iOS Safari에서 더 안정적)
+      const result = await auth.signInWithPopup(googleProvider);
+      
+      this.showDebugLog('✅ 팝업 로그인 성공!', 'success');
+      this.showDebugLog(`📧 로그인된 이메일: ${result.user.email}`, 'info');
+      
+      // 즉시 사용자 처리
+      await this.handleFirebaseUser(result.user);
       
     } catch (error) {
       this.showDebugLog(`❌ Google 로그인 오류: ${error.message}`, 'error');
@@ -618,7 +580,7 @@ const Auth = {
       
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/popup-blocked') {
         // 사용자가 팝업을 닫거나 차단됨 - 에러 표시 안 함
-        this.showDebugLog('ℹ️ 사용자가 취소함', 'warning');
+        this.showDebugLog('ℹ️ 사용자가 팝업을 닫음', 'warning');
         return;
       }
       
