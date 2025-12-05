@@ -10,7 +10,10 @@ const ExportManager = {
     }
 
     const user = Auth.getCurrentUser();
-    const label = ShiftManager.getWeekLabelForArchive(weekData.weekStart);
+    
+    // 영어 날짜 라벨
+    const d = new Date(weekData.weekStart + 'T00:00:00');
+    const englishLabel = `Week of ${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     // 워크북 생성
     const wb = XLSX.utils.book_new();
@@ -19,17 +22,23 @@ const ExportManager = {
     const data = [];
     
     // 헤더
-    data.push([label]);
-    data.push([`작성자: ${user.username}`]);
+    data.push([englishLabel]);
+    data.push([`Employee: ${user.username}`]);
     data.push([]);
     
     // 테이블 헤더
     data.push([
-      '요일',
-      'LN 출근', 'LN 퇴근', 'LN 시간(h)',
-      'DN 출근', 'DN 퇴근', 'DN 시간(h)',
-      '일일 합계(h)'
+      'Day',
+      'LN Start', 'LN End', 'LN Hours',
+      'DN Start', 'DN End', 'DN Hours',
+      'Daily Total'
     ]);
+
+    // 영어 요일 이름
+    const dayNamesEn = {
+      mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
+      fri: 'Friday', sat: 'Saturday', sun: 'Sunday'
+    };
 
     // 각 요일 데이터
     ShiftManager.dayKeys.forEach(key => {
@@ -39,7 +48,7 @@ const ExportManager = {
       const total = lnH + dnH;
 
       data.push([
-        ShiftManager.dayNamesKo[key],
+        dayNamesEn[key],
         d.lnStart || '',
         d.lnEnd || '',
         lnH,
@@ -53,24 +62,24 @@ const ExportManager = {
     // 합계
     const totals = ShiftManager.updateWeekTotals();
     data.push([]);
-    data.push(['평일 합계(h)', totals.weekdayTotal]);
-    data.push(['토요일 합계(h)', totals.saturdayTotal]);
-    data.push(['일요일 합계(h)', totals.sundayTotal]);
-    data.push(['전체 합계(h)', totals.all]);
+    data.push(['Weekday Total (h)', totals.weekdayTotal]);
+    data.push(['Saturday Total (h)', totals.saturdayTotal]);
+    data.push(['Sunday Total (h)', totals.sundayTotal]);
+    data.push(['Total Hours (h)', totals.all]);
 
     // 워크시트 생성
     const ws = XLSX.utils.aoa_to_sheet(data);
     
     // 열 너비 설정
     ws['!cols'] = [
-      { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
+      { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
       { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }
     ];
 
-    XLSX.utils.book_append_sheet(wb, ws, '근무표');
+    XLSX.utils.book_append_sheet(wb, ws, 'Shift Schedule');
 
     // 파일 다운로드
-    XLSX.writeFile(wb, `근무표_${weekData.weekStart}.xlsx`);
+    XLSX.writeFile(wb, `Shift_${weekData.weekStart}.xlsx`);
   },
 
   // PDF 다운로드
@@ -83,23 +92,28 @@ const ExportManager = {
     }
 
     const user = Auth.getCurrentUser();
-    const label = ShiftManager.getWeekLabelForArchive(weekData.weekStart);
+    
+    // 영어 날짜 라벨
+    const d = new Date(weekData.weekStart + 'T00:00:00');
+    const englishLabel = `Week of ${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     // jsPDF 인스턴스 생성
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-
-    // 한글 폰트 설정을 위한 기본 설정
-    doc.setLanguage("ko-KR");
     
     // 제목
     doc.setFontSize(16);
-    doc.text(label, 105, 20, { align: 'center' });
+    doc.text(englishLabel, 105, 20, { align: 'center' });
     
     doc.setFontSize(12);
-    doc.text(`작성자: ${user.username}`, 105, 30, { align: 'center' });
+    doc.text(`Employee: ${user.username}`, 105, 30, { align: 'center' });
 
     // 테이블 데이터 준비
+    const dayNamesEn = {
+      mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
+      fri: 'Friday', sat: 'Saturday', sun: 'Sunday'
+    };
+    
     const tableData = [];
     ShiftManager.dayKeys.forEach(key => {
       const d = weekData.days[key] || {};
@@ -108,7 +122,7 @@ const ExportManager = {
       const total = (parseFloat(lnH) + parseFloat(dnH)).toFixed(2);
 
       tableData.push([
-        ShiftManager.dayNamesKo[key],
+        dayNamesEn[key],
         d.lnStart || '-',
         d.lnEnd || '-',
         lnH + 'h',
@@ -123,10 +137,10 @@ const ExportManager = {
     doc.autoTable({
       startY: 40,
       head: [[
-        '요일',
-        'LN 출근', 'LN 퇴근', 'LN 시간',
-        'DN 출근', 'DN 퇴근', 'DN 시간',
-        '일일 합계'
+        'Day',
+        'LN Start', 'LN End', 'LN Hours',
+        'DN Start', 'DN End', 'DN Hours',
+        'Daily Total'
       ]],
       body: tableData,
       theme: 'grid',
@@ -147,20 +161,20 @@ const ExportManager = {
     const finalY = doc.lastAutoTable.finalY + 10;
 
     doc.setFontSize(11);
-    doc.text(`평일 합계: ${totals.weekdayTotal.toFixed(2)}h`, 20, finalY);
-    doc.text(`토요일 합계: ${totals.saturdayTotal.toFixed(2)}h`, 20, finalY + 7);
-    doc.text(`일요일 합계: ${totals.sundayTotal.toFixed(2)}h`, 20, finalY + 14);
+    doc.text(`Weekday Total: ${totals.weekdayTotal.toFixed(2)}h`, 20, finalY);
+    doc.text(`Saturday Total: ${totals.saturdayTotal.toFixed(2)}h`, 20, finalY + 7);
+    doc.text(`Sunday Total: ${totals.sundayTotal.toFixed(2)}h`, 20, finalY + 14);
     doc.setFont(undefined, 'bold');
-    doc.text(`전체 합계: ${totals.all.toFixed(2)}h`, 20, finalY + 21);
+    doc.text(`Total Hours: ${totals.all.toFixed(2)}h`, 20, finalY + 21);
 
     // 생성 날짜
     doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
-    const now = new Date().toLocaleString('ko-KR');
-    doc.text(`생성일시: ${now}`, 20, finalY + 35);
+    const now = new Date().toLocaleString('en-US');
+    doc.text(`Generated: ${now}`, 20, finalY + 35);
 
     // PDF 저장
-    doc.save(`근무표_${weekData.weekStart}.pdf`);
+    doc.save(`Shift_${weekData.weekStart}.pdf`);
   },
 
   // 전체 근무자 Excel 다운로드
@@ -177,7 +191,7 @@ const ExportManager = {
         // 사용자 정보 가져오기
         const user = await Database.getUserById(shift.user_id);
         userShifts[shift.user_id] = {
-          username: user?.username || '알 수 없음',
+          username: user?.username || 'Unknown',
           shifts: {}
         };
       }
@@ -186,34 +200,77 @@ const ExportManager = {
 
     // 워크북 생성
     const wb = XLSX.utils.book_new();
-
-    // 각 사용자별로 시트 생성
-    for (const [userId, userData] of Object.entries(userShifts)) {
-      const data = [];
+    
+    // 하나의 시트에 가로로 정리
+    const data = [];
+    
+    // 제목
+    const d = new Date(weekStart + 'T00:00:00');
+    const label = `Week of ${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    data.push([label]);
+    data.push([]);
+    
+    // 헤더 행 1: 직원 이름
+    const header1 = ['Day'];
+    const header2 = [''];
+    
+    const userList = Object.entries(userShifts);
+    userList.forEach(([userId, userData]) => {
+      // 각 직원에 대해 LN, DN, Total 3개 열
+      header1.push(userData.username, '', '');
+      header2.push('LN', 'DN', 'Total');
+    });
+    
+    data.push(header1);
+    data.push(header2);
+    
+    // 각 요일 데이터
+    const dayNames = {
+      mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu',
+      fri: 'Fri', sat: 'Sat', sun: 'Sun'
+    };
+    
+    ShiftManager.dayKeys.forEach(key => {
+      const row = [dayNames[key]];
       
-      // 헤더
-      const d = new Date(weekStart + 'T00:00:00');
-      const label = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 시작 주`;
-      data.push([`${userData.username} - ${label}`]);
-      data.push([]);
-      
-      // 테이블 헤더
-      data.push([
-        '요일',
-        'LN 출근', 'LN 퇴근', 'LN 시간(h)',
-        'DN 출근', 'DN 퇴근', 'DN 시간(h)',
-        '일일 합계(h)'
-      ]);
-
-      let weekdayTotal = 0, satTotal = 0, sunTotal = 0;
-
-      // 각 요일 데이터
-      ShiftManager.dayKeys.forEach(key => {
+      userList.forEach(([userId, userData]) => {
         const shift = userData.shifts[key] || {};
         const lnH = shift.ln_hours || 0;
         const dnH = shift.dn_hours || 0;
         const total = lnH + dnH;
-
+        
+        // LN 시간 (start-end)
+        const lnText = shift.ln_start && shift.ln_end 
+          ? `${shift.ln_start}-${shift.ln_end} (${lnH}h)`
+          : lnH > 0 ? `${lnH}h` : '';
+        
+        // DN 시간 (start-end)
+        const dnText = shift.dn_start && shift.dn_end
+          ? `${shift.dn_start}-${shift.dn_end} (${dnH}h)`
+          : dnH > 0 ? `${dnH}h` : '';
+        
+        row.push(lnText, dnText, total > 0 ? `${total}h` : '');
+      });
+      
+      data.push(row);
+    });
+    
+    // 합계 행
+    data.push([]);
+    
+    // 평일 합계
+    const weekdayRow = ['Weekday Total'];
+    const saturdayRow = ['Saturday Total'];
+    const sundayRow = ['Sunday Total'];
+    const totalRow = ['Total Hours'];
+    
+    userList.forEach(([userId, userData]) => {
+      let weekdayTotal = 0, satTotal = 0, sunTotal = 0;
+      
+      ShiftManager.dayKeys.forEach(key => {
+        const shift = userData.shifts[key] || {};
+        const total = (shift.ln_hours || 0) + (shift.dn_hours || 0);
+        
         if (['mon', 'tue', 'wed', 'thu', 'fri'].includes(key)) {
           weekdayTotal += total;
         } else if (key === 'sat') {
@@ -221,38 +278,43 @@ const ExportManager = {
         } else if (key === 'sun') {
           sunTotal += total;
         }
-
-        data.push([
-          ShiftManager.dayNamesKo[key],
-          shift.ln_start || '',
-          shift.ln_end || '',
-          lnH,
-          shift.dn_start || '',
-          shift.dn_end || '',
-          dnH,
-          total
-        ]);
       });
-
-      // 합계
-      data.push([]);
-      data.push(['평일 합계(h)', weekdayTotal.toFixed(2)]);
-      data.push(['토요일 합계(h)', satTotal.toFixed(2)]);
-      data.push(['일요일 합계(h)', sunTotal.toFixed(2)]);
-      data.push(['전체 합계(h)', (weekdayTotal + satTotal + sunTotal).toFixed(2)]);
-
-      // 워크시트 생성
-      const ws = XLSX.utils.aoa_to_sheet(data);
-      ws['!cols'] = [
-        { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
-        { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }
-      ];
-
-      XLSX.utils.book_append_sheet(wb, ws, userData.username.substring(0, 31));
+      
+      weekdayRow.push('', '', `${weekdayTotal.toFixed(2)}h`);
+      saturdayRow.push('', '', `${satTotal.toFixed(2)}h`);
+      sundayRow.push('', '', `${sunTotal.toFixed(2)}h`);
+      totalRow.push('', '', `${(weekdayTotal + satTotal + sunTotal).toFixed(2)}h`);
+    });
+    
+    data.push(weekdayRow);
+    data.push(saturdayRow);
+    data.push(sundayRow);
+    data.push(totalRow);
+    
+    // 워크시트 생성
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    
+    // 열 너비 설정 (Day + 각 직원당 3열)
+    const cols = [{ wch: 15 }];
+    userList.forEach(() => {
+      cols.push({ wch: 18 }, { wch: 18 }, { wch: 10 });
+    });
+    ws['!cols'] = cols;
+    
+    // 머지: 직원 이름 (3열 병합)
+    const merges = [];
+    for (let i = 0; i < userList.length; i++) {
+      merges.push({
+        s: { r: 2, c: 1 + i * 3 },
+        e: { r: 2, c: 3 + i * 3 }
+      });
     }
+    ws['!merges'] = merges;
+
+    XLSX.utils.book_append_sheet(wb, ws, 'All Staff Shifts');
 
     // 파일 다운로드
-    XLSX.writeFile(wb, `전체근무표_${weekStart}.xlsx`);
+    XLSX.writeFile(wb, `AllStaff_${weekStart}.xlsx`);
   },
 
   // 전체 근무자 PDF 다운로드
@@ -281,6 +343,12 @@ const ExportManager = {
 
     let isFirstPage = true;
 
+    // 영어 요일 이름
+    const dayNamesEn = {
+      mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
+      fri: 'Friday', sat: 'Saturday', sun: 'Sunday'
+    };
+    
     // 각 사용자별로 페이지 생성
     for (const [userId, userData] of Object.entries(userShifts)) {
       if (!isFirstPage) {
@@ -289,11 +357,11 @@ const ExportManager = {
       isFirstPage = false;
 
       const d = new Date(weekStart + 'T00:00:00');
-      const label = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 시작 주`;
+      const englishLabel = `Week of ${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
       // 제목
       doc.setFontSize(16);
-      doc.text(`${userData.username} - ${label}`, 105, 20, { align: 'center' });
+      doc.text(`${userData.username} - ${englishLabel}`, 105, 20, { align: 'center' });
 
       // 테이블 데이터 준비
       const tableData = [];
@@ -314,7 +382,7 @@ const ExportManager = {
         }
 
         tableData.push([
-          ShiftManager.dayNamesKo[key],
+          dayNamesEn[key],
           shift.ln_start || '-',
           shift.ln_end || '-',
           lnH.toFixed(2) + 'h',
@@ -329,10 +397,10 @@ const ExportManager = {
       doc.autoTable({
         startY: 30,
         head: [[
-          '요일',
-          'LN 출근', 'LN 퇴근', 'LN 시간',
-          'DN 출근', 'DN 퇴근', 'DN 시간',
-          '일일 합계'
+          'Day',
+          'LN Start', 'LN End', 'LN Hours',
+          'DN Start', 'DN End', 'DN Hours',
+          'Daily Total'
         ]],
         body: tableData,
         theme: 'grid',
@@ -351,15 +419,15 @@ const ExportManager = {
       // 합계 정보
       const finalY = doc.lastAutoTable.finalY + 10;
       doc.setFontSize(11);
-      doc.text(`평일: ${weekdayTotal.toFixed(2)}h | 토요일: ${satTotal.toFixed(2)}h | 일요일: ${sunTotal.toFixed(2)}h | 전체: ${(weekdayTotal + satTotal + sunTotal).toFixed(2)}h`, 20, finalY);
+      doc.text(`Weekday: ${weekdayTotal.toFixed(2)}h | Saturday: ${satTotal.toFixed(2)}h | Sunday: ${sunTotal.toFixed(2)}h | Total: ${(weekdayTotal + satTotal + sunTotal).toFixed(2)}h`, 20, finalY);
     }
 
     // 생성 날짜
     doc.setFontSize(9);
-    const now = new Date().toLocaleString('ko-KR');
-    doc.text(`생성일시: ${now}`, 20, doc.internal.pageSize.height - 10);
+    const now = new Date().toLocaleString('en-US');
+    doc.text(`Generated: ${now}`, 20, doc.internal.pageSize.height - 10);
 
     // PDF 저장
-    doc.save(`전체근무표_${weekStart}.pdf`);
+    doc.save(`AllStaff_${weekStart}.pdf`);
   }
 };

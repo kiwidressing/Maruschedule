@@ -404,7 +404,7 @@ const ShiftManager = {
       }
     } catch (error) {
       console.error('아카이브 저장 에러:', error);
-      alert('저장 중 오류가 발생했습니다.');
+      alert(`Archive save error:\n\n${error.message || error}\n\nPlease check console for details.`);
     }
   },
 
