@@ -10,6 +10,9 @@ const ShiftManager = {
     mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu',
     fri: 'Fri', sat: 'Sat', sun: 'Sun'
   },
+  
+  // 중복 저장 방지 플래그
+  isSaving: false,
 
   // 초기화
   init() {
@@ -19,37 +22,26 @@ const ShiftManager = {
 
   // 이벤트 리스너 설정
   setupEventListeners() {
-    // 중복 등록 방지: 이미 등록된 리스너가 있다면 제거
+    // 중복 등록 방지: 이벤트 리스너가 이미 등록되어 있다면 스킵
+    if (this._listenersSet) {
+      return;
+    }
+    this._listenersSet = true;
+
     const weekStart = document.getElementById('weekStart');
-    const applyDayBtn = document.getElementById('applyDayBtn');
-    const clearDayInputsBtn = document.getElementById('clearDayInputsBtn');
-    const saveWeekBtn = document.getElementById('saveWeekBtn');
-
-    // 기존 리스너 제거
-    weekStart.replaceWith(weekStart.cloneNode(true));
-    applyDayBtn.replaceWith(applyDayBtn.cloneNode(true));
-    clearDayInputsBtn.replaceWith(clearDayInputsBtn.cloneNode(true));
-    saveWeekBtn.replaceWith(saveWeekBtn.cloneNode(true));
-
-    // 새로운 요소 가져오기
-    const newWeekStart = document.getElementById('weekStart');
-    const newApplyDayBtn = document.getElementById('applyDayBtn');
-    const newClearDayInputsBtn = document.getElementById('clearDayInputsBtn');
-    const newSaveWeekBtn = document.getElementById('saveWeekBtn');
-
-    newWeekStart.addEventListener('change', () => {
+    weekStart.addEventListener('change', () => {
       this.setWeekStartFromInput();
     });
 
-    newApplyDayBtn.addEventListener('click', () => {
+    document.getElementById('applyDayBtn').addEventListener('click', () => {
       this.applyDayInput();
     });
 
-    newClearDayInputsBtn.addEventListener('click', () => {
+    document.getElementById('clearDayInputsBtn').addEventListener('click', () => {
       this.clearDayInputs();
     });
 
-    newSaveWeekBtn.addEventListener('click', () => {
+    document.getElementById('saveWeekBtn').addEventListener('click', () => {
       this.saveCurrentWeekToArchive();
     });
 
@@ -369,6 +361,14 @@ const ShiftManager = {
 
   // 아카이브에 저장
   async saveCurrentWeekToArchive() {
+    // 중복 실행 방지
+    if (this.isSaving) {
+      console.log('이미 저장 중입니다...');
+      return;
+    }
+    
+    console.log('아카이브 저장 시작...');
+    
     if (!this.currentWeekData.weekStart) {
       alert('주 시작 날짜가 설정되지 않았습니다.');
       return;
@@ -380,21 +380,14 @@ const ShiftManager = {
       return;
     }
 
-    // 중복 저장 방지
-    const saveBtn = document.getElementById('saveWeekBtn');
-    if (saveBtn.disabled) {
-      console.log('이미 저장 중입니다...');
-      return; // 이미 저장 중이면 무시
-    }
+    // 저장 시작 플래그 설정
+    this.isSaving = true;
     
+    const saveBtn = document.getElementById('saveWeekBtn');
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
     
-    // 더블클릭 방지를 위한 지연
-    setTimeout(() => {
-      saveBtn.disabled = false;
-      saveBtn.innerHTML = '<i class="fas fa-save"></i> Save to Archive';
-    }, 3000); // 3초 후 다시 활성화
+    // 더블클릭 방지를 위한 지연 제거 - 즉시 복원하지 않음
 
     const totals = this.updateWeekTotals();
     const label = this.getWeekLabelForArchive(this.currentWeekData.weekStart);
@@ -431,7 +424,11 @@ const ShiftManager = {
 
       await Database.saveArchive(archiveData);
       
-      // 성공: 버튼 상태는 setTimeout으로 자동 복원됨
+      // 성공: 플래그 해제 및 버튼 상태 복원
+      this.isSaving = false;
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i class="fas fa-save"></i> Save to Archive';
+      
       alert('Schedule saved to archive successfully!');
       
       // 아카이브 탭 새로고침
@@ -439,7 +436,8 @@ const ShiftManager = {
         window.App.loadMyArchives();
       }
     } catch (error) {
-      // 실패: 버튼 상태 복원 (즉시)
+      // 실패: 플래그 해제 및 버튼 상태 복원
+      this.isSaving = false;
       saveBtn.disabled = false;
       saveBtn.innerHTML = '<i class="fas fa-save"></i> Save to Archive';
       

@@ -150,11 +150,14 @@ const Database = {
         archiveData.account_type = currentUser.role || 'personal';
       }
 
+      console.log('아카이브 저장 시도:', archiveData);
+
       const docRef = await db.collection('archives').add({
         ...archiveData,
         archived_at: firebase.firestore.FieldValue.serverTimestamp()
       });
 
+      console.log('아카이브 저장 성공:', docRef.id);
       return { success: true, id: docRef.id };
     } catch (error) {
       console.error('아카이브 저장 에러:', error);
