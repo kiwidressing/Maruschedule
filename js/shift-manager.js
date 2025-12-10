@@ -19,19 +19,37 @@ const ShiftManager = {
 
   // 이벤트 리스너 설정
   setupEventListeners() {
-    document.getElementById('weekStart').addEventListener('change', () => {
+    // 중복 등록 방지: 이미 등록된 리스너가 있다면 제거
+    const weekStart = document.getElementById('weekStart');
+    const applyDayBtn = document.getElementById('applyDayBtn');
+    const clearDayInputsBtn = document.getElementById('clearDayInputsBtn');
+    const saveWeekBtn = document.getElementById('saveWeekBtn');
+
+    // 기존 리스너 제거
+    weekStart.replaceWith(weekStart.cloneNode(true));
+    applyDayBtn.replaceWith(applyDayBtn.cloneNode(true));
+    clearDayInputsBtn.replaceWith(clearDayInputsBtn.cloneNode(true));
+    saveWeekBtn.replaceWith(saveWeekBtn.cloneNode(true));
+
+    // 새로운 요소 가져오기
+    const newWeekStart = document.getElementById('weekStart');
+    const newApplyDayBtn = document.getElementById('applyDayBtn');
+    const newClearDayInputsBtn = document.getElementById('clearDayInputsBtn');
+    const newSaveWeekBtn = document.getElementById('saveWeekBtn');
+
+    newWeekStart.addEventListener('change', () => {
       this.setWeekStartFromInput();
     });
 
-    document.getElementById('applyDayBtn').addEventListener('click', () => {
+    newApplyDayBtn.addEventListener('click', () => {
       this.applyDayInput();
     });
 
-    document.getElementById('clearDayInputsBtn').addEventListener('click', () => {
+    newClearDayInputsBtn.addEventListener('click', () => {
       this.clearDayInputs();
     });
 
-    document.getElementById('saveWeekBtn').addEventListener('click', () => {
+    newSaveWeekBtn.addEventListener('click', () => {
       this.saveCurrentWeekToArchive();
     });
 
@@ -362,6 +380,22 @@ const ShiftManager = {
       return;
     }
 
+    // 중복 저장 방지
+    const saveBtn = document.getElementById('saveWeekBtn');
+    if (saveBtn.disabled) {
+      console.log('이미 저장 중입니다...');
+      return; // 이미 저장 중이면 무시
+    }
+    
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    
+    // 더블클릭 방지를 위한 지연
+    setTimeout(() => {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i class="fas fa-save"></i> Save to Archive';
+    }, 3000); // 3초 후 다시 활성화
+
     const totals = this.updateWeekTotals();
     const label = this.getWeekLabelForArchive(this.currentWeekData.weekStart);
 
@@ -396,6 +430,8 @@ const ShiftManager = {
       };
 
       await Database.saveArchive(archiveData);
+      
+      // 성공: 버튼 상태는 setTimeout으로 자동 복원됨
       alert('Schedule saved to archive successfully!');
       
       // 아카이브 탭 새로고침
@@ -403,6 +439,10 @@ const ShiftManager = {
         window.App.loadMyArchives();
       }
     } catch (error) {
+      // 실패: 버튼 상태 복원 (즉시)
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i class="fas fa-save"></i> Save to Archive';
+      
       console.error('아카이브 저장 에러:', error);
       alert(`Archive save error:\n\n${error.message || error}\n\nPlease check console for details.`);
     }

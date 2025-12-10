@@ -130,6 +130,17 @@ const Database = {
         throw new Error('Firestore not initialized');
       }
 
+      // 데이터 검증
+      if (!archiveData.user_id) {
+        throw new Error('user_id is required');
+      }
+      if (!archiveData.username) {
+        throw new Error('username is required');
+      }
+      if (!archiveData.week_start) {
+        throw new Error('week_start is required');
+      }
+
       // Add company_id from current user (optional for personal accounts)
       const currentUser = Auth.getCurrentUser();
       if (currentUser) {
@@ -147,6 +158,18 @@ const Database = {
       return { success: true, id: docRef.id };
     } catch (error) {
       console.error('아카이브 저장 에러:', error);
+      
+      // 더 구체적인 에러 메시지
+      if (error.code === 'permission-denied') {
+        throw new Error('Permission denied: Cannot save archive. Please check Firestore rules.');
+      } else if (error.code === 'unavailable') {
+        throw new Error('Firestore is unavailable. Please check your connection.');
+      } else if (error.message.includes('user_id')) {
+        throw new Error('User ID is missing. Please log in again.');
+      } else if (error.message.includes('username')) {
+        throw new Error('Username is missing. Please check your profile.');
+      }
+      
       throw error;
     }
   },
